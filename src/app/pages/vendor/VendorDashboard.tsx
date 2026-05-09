@@ -1,0 +1,2522 @@
+'use client';
+
+import { useState, useEffect } from 'react';
+import { useRouter, useParams } from 'next/navigation';
+import {
+  HardHat, Package, Plus, BarChart2, ShoppingBag, Settings,
+  Search, Filter, MoreVertical, Edit, Trash2, Upload, Image,
+  AlertTriangle, TrendingUp, TrendingDown, Eye, Star, Clock,
+  Truck, CheckCircle2, XCircle, ChevronRight, Bell, LogOut,
+  ChevronDown, Tag, DollarSign, Box, RefreshCw, Download,
+  Calendar, MapPin, User, Phone, ChevronUp, FileText, Send,
+  Mail, MessageSquare, Store, Camera, Building2, CreditCard,
+  Zap, Award, Shield, ChevronLeft
+} from 'lucide-react';
+import DemoNav from '../../components/layout/DemoNav';
+import { useCompleteBusinessStep3Mutation, useCompleteDocumentsStep4Mutation } from '@/hooks/useAuth';
+import { 
+  useProducts, 
+  useCategories, 
+  useCreateProductMutation, 
+  useUpdateProductMutation, 
+  useDeleteProductMutation,
+  Product
+} from '@/hooks/useProduct';
+import { toast } from 'sonner';
+
+const navItems = [
+  { id: 'products', label: 'Products Listing', icon: Package, path: '/vendor/dashboard/products' },
+  { id: 'add-product', label: 'Add Product', icon: Plus, path: '/vendor/dashboard/add-product' },
+  { id: 'inventory', label: 'Inventory', icon: Box, path: '/vendor/dashboard/inventory' },
+  { id: 'stock-status', label: 'Stock Status', icon: CheckCircle2, path: '/vendor/dashboard/stock-status' },
+  { id: 'orders', label: 'Orders', icon: ShoppingBag, path: '/vendor/dashboard/orders' },
+  { id: 'rfq', label: 'RFQ Management', icon: FileText, path: '/vendor/dashboard/rfq' },
+];
+
+const subscriptionPlans = [
+  {
+    id: 'manufacturer',
+    name: 'Manufacturer',
+    price: '270,000',
+    period: '/Annual',
+    badge: 'Most Popular',
+    badgeColor: '#F97316',
+    description: 'For large-scale manufacturers & distributors',
+    features: [
+      'Unlimited product listings',
+      'Featured placement on homepage',
+      'B2B pricing tiers support',
+      'Dedicated account manager',
+      'Priority customer support',
+      'Advanced analytics dashboard',
+      'Brand verification badge',
+      'Bulk order management',
+    ],
+    color: '#0D2E5E',
+    bg: '#EFF6FF',
+  },
+  {
+    id: 'shopkeeper',
+    name: 'Shopkeeper',
+    price: '50,000',
+    period: '/Annual',
+    badge: 'Great Value',
+    badgeColor: '#10B981',
+    description: 'For retail shops & small vendors',
+    features: [
+      'Up to 200 product listings',
+      'Standard search placement',
+      'Retail pricing support',
+      'Email & chat support',
+      'Basic analytics',
+      'Order management',
+      'Inventory tracking',
+      'Mobile app access',
+    ],
+    color: '#10B981',
+    bg: '#F0FDF4',
+  },
+];
+
+const mockProducts = [
+  { id: 1, name: 'OPC Cement 50kg', category: 'Cement', sku: 'CEM-001', stock: 450, price: 1200, status: 'active', rating: 4.5, sales: 234, img: 'https://images.unsplash.com/photo-1730627283177-f43b83c3850c?w=60&h=60&fit=crop' },
+  { id: 2, name: 'TMT Steel Bar 10mm', category: 'Steel', sku: 'STL-022', stock: 120, price: 8500, status: 'active', rating: 4.2, sales: 89, img: 'https://images.unsplash.com/photo-1761479867761-7a8b11f54449?w=60&h=60&fit=crop' },
+  { id: 3, name: 'Floor Tiles 60x60', category: 'Tiles', sku: 'TIL-045', stock: 800, price: 2200, status: 'active', rating: 4.7, sales: 312, img: 'https://images.unsplash.com/photo-1695191388218-f6259600223f?w=60&h=60&fit=crop' },
+  { id: 4, name: 'Wall Paint 20L', category: 'Paints', sku: 'PNT-012', stock: 65, price: 3500, status: 'low_stock', rating: 4.1, sales: 178, img: 'https://images.unsplash.com/photo-1698216543278-c382147e9fbf?w=60&h=60&fit=crop' },
+  { id: 5, name: 'PVC Pipe 4 inch', category: 'Plumbing', sku: 'PLM-008', stock: 0, price: 450, status: 'out_of_stock', rating: 3.9, sales: 56, img: 'https://images.unsplash.com/photo-1556995378-e0a5c979ec57?w=60&h=60&fit=crop' },
+  { id: 6, name: 'Electric Cable 2.5mm', category: 'Electrical', sku: 'ELC-031', stock: 220, price: 1800, status: 'active', rating: 4.4, sales: 145, img: 'https://images.unsplash.com/photo-1684543327925-ca57d94843d6?w=60&h=60&fit=crop' },
+];
+
+// Generate more realistic orders data
+const generateMockOrders = () => {
+  const statuses = ['pending', 'processing', 'shipped', 'delivered', 'cancelled'];
+  const buyers = ['Ahmad Construction Co.', 'Raza Builders', 'National Housing', 'Pak Contractors', 'City Developers', 'Elite Builders', 'Metro Construction', 'Prime Developers', 'Royal Builders', 'United Contractors'];
+  const cities = ['Lahore', 'Karachi', 'Islamabad', 'Faisalabad', 'Multan', 'Rawalpindi', 'Gujranwala', 'Peshawar'];
+  const products = ['OPC Cement 50kg', 'TMT Steel Bar 10mm', 'Floor Tiles 60x60', 'Wall Paint 20L', 'PVC Pipe 4 inch'];
+
+  const orders = [];
+  for (let i = 1; i <= 50; i++) {
+    const itemCount = Math.floor(Math.random() * 5) + 1;
+    const orderItems = [];
+    for (let j = 0; j < itemCount; j++) {
+      const product = products[Math.floor(Math.random() * products.length)];
+      const qty = Math.floor(Math.random() * 20) + 1;
+      const price = Math.floor(Math.random() * 10000) + 500;
+      orderItems.push({ product, qty, price });
+    }
+    const total = orderItems.reduce((sum, item) => sum + (item.qty * item.price), 0);
+    const daysAgo = Math.floor(Math.random() * 30);
+    const orderDate = new Date(Date.now() - daysAgo * 24 * 60 * 60 * 1000);
+
+    orders.push({
+      id: `ORD-${String(1000 + i).padStart(4, '0')}`,
+      buyer: buyers[Math.floor(Math.random() * buyers.length)],
+      buyerPhone: `+92 300 ${String(Math.floor(Math.random() * 10000000)).padStart(7, '0')}`,
+      items: orderItems,
+      itemCount: itemCount,
+      total: total,
+      status: statuses[Math.floor(Math.random() * statuses.length)],
+      date: orderDate.toISOString().split('T')[0],
+      time: `${String(Math.floor(Math.random() * 12) + 1).padStart(2, '0')}:${String(Math.floor(Math.random() * 60)).padStart(2, '0')} ${Math.random() > 0.5 ? 'AM' : 'PM'}`,
+      city: cities[Math.floor(Math.random() * cities.length)],
+      address: `${Math.floor(Math.random() * 999) + 1} Street ${Math.floor(Math.random() * 10) + 1}, Block ${String.fromCharCode(65 + Math.floor(Math.random() * 10))}`,
+      paymentMethod: Math.random() > 0.5 ? 'COD' : 'Bank Transfer'
+    });
+  }
+  return orders.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+};
+
+const mockOrders = generateMockOrders();
+
+const inventoryItems = [
+  { name: 'OPC Cement 50kg', sku: 'CEM-001', current: 450, min: 100, max: 1000, category: 'Cement' },
+  { name: 'TMT Steel Bar 10mm', sku: 'STL-022', current: 120, min: 50, max: 500, category: 'Steel' },
+  { name: 'Floor Tiles 60x60', sku: 'TIL-045', current: 800, min: 200, max: 2000, category: 'Tiles' },
+  { name: 'Wall Paint 20L', sku: 'PNT-012', current: 65, min: 80, max: 400, category: 'Paints' },
+  { name: 'PVC Pipe 4 inch', sku: 'PLM-008', current: 0, min: 50, max: 300, category: 'Plumbing' },
+  { name: 'Electric Cable 2.5mm', sku: 'ELC-031', current: 220, min: 100, max: 600, category: 'Electrical' },
+];
+
+// Categories will be fetched from API
+
+// Generate large dataset of RFQs
+const generateMockRFQs = () => {
+  const statuses: ('pending' | 'quoted' | 'accepted' | 'rejected')[] = ['pending', 'quoted', 'accepted', 'rejected'];
+  const buyers = [
+    'Ahmad Construction Co.', 'Raza Builders', 'National Housing', 'Pak Contractors',
+    'City Developers', 'Elite Builders', 'Metro Construction', 'Prime Developers',
+    'Royal Builders', 'United Contractors', 'Smart Homes', 'Vista Properties',
+    'Skyline Developers', 'Golden Construction', 'Atlas Builders', 'Pearl Homes'
+  ];
+  const products = [
+    'OPC Cement 50kg', 'TMT Steel Bar 10mm', 'Floor Tiles 60x60', 'Wall Paint 20L',
+    'PVC Pipe 4 inch', 'Electric Cable 2.5mm', 'Sand (per truck)', 'Bricks (per 1000)',
+    'Marble Tiles', 'Glass Panels', 'Wooden Doors', 'Aluminum Windows'
+  ];
+  const cities = ['Lahore', 'Karachi', 'Islamabad', 'Faisalabad', 'Multan', 'Rawalpindi', 'Gujranwala', 'Peshawar'];
+
+  const rfqs = [];
+  for (let i = 1; i <= 80; i++) {
+    const daysAgo = Math.floor(Math.random() * 30);
+    const rfqDate = new Date(Date.now() - daysAgo * 24 * 60 * 60 * 1000);
+    const status = statuses[Math.floor(Math.random() * statuses.length)];
+    const product = products[Math.floor(Math.random() * products.length)];
+    const buyer = buyers[Math.floor(Math.random() * buyers.length)];
+    const quantity = Math.floor(Math.random() * 1000) + 50;
+    const city = cities[Math.floor(Math.random() * cities.length)];
+
+    const conversation: any[] = [{
+      id: 1,
+      sender: 'buyer',
+      text: `We need ${quantity} units of ${product} for our construction project in ${city}. Please provide your best wholesale price and delivery timeline.`,
+      timestamp: `${rfqDate.toISOString().split('T')[0]} ${String(Math.floor(Math.random() * 12) + 1).padStart(2, '0')}:${String(Math.floor(Math.random() * 60)).padStart(2, '0')} ${Math.random() > 0.5 ? 'AM' : 'PM'}`
+    }];
+
+    if (status !== 'pending') {
+      const basePrice = Math.floor(Math.random() * 10000) + 500;
+      const totalPrice = basePrice * quantity;
+      conversation.push({
+        id: 2,
+        sender: 'vendor',
+        text: `Thank you for your inquiry. We can supply ${quantity} units of ${product}.\n\nBase Price: Rs. ${basePrice.toLocaleString()} per unit\nTotal: Rs. ${totalPrice.toLocaleString()}\nDelivery: ${Math.floor(Math.random() * 7) + 1}-${Math.floor(Math.random() * 7) + 5} working days\n\nAll products come with quality guarantee. Please confirm to proceed.`,
+        timestamp: `${rfqDate.toISOString().split('T')[0]} ${String(Math.floor(Math.random() * 12) + 1).padStart(2, '0')}:${String(Math.floor(Math.random() * 60)).padStart(2, '0')} ${Math.random() > 0.5 ? 'AM' : 'PM'}`,
+        basePrice,
+        totalPrice
+      });
+    }
+
+    if (status === 'accepted') {
+      conversation.push({
+        id: 3,
+        sender: 'buyer',
+        text: 'Perfect! We accept your quotation. Please proceed with the order.',
+        timestamp: `${rfqDate.toISOString().split('T')[0]} ${String(Math.floor(Math.random() * 12) + 1).padStart(2, '0')}:${String(Math.floor(Math.random() * 60)).padStart(2, '0')} ${Math.random() > 0.5 ? 'AM' : 'PM'}`
+      });
+    }
+
+    if (status === 'rejected') {
+      conversation.push({
+        id: 3,
+        sender: 'buyer',
+        text: 'Thank you for the quote, but we have decided to go with another vendor.',
+        timestamp: `${rfqDate.toISOString().split('T')[0]} ${String(Math.floor(Math.random() * 12) + 1).padStart(2, '0')}:${String(Math.floor(Math.random() * 60)).padStart(2, '0')} ${Math.random() > 0.5 ? 'AM' : 'PM'}`
+      });
+    }
+
+    rfqs.push({
+      id: `RFQ-${String(1000 + i).padStart(4, '0')}`,
+      buyer,
+      buyerEmail: `${buyer.toLowerCase().replace(/\s+/g, '')}@example.pk`,
+      buyerPhone: `+92 ${Math.floor(Math.random() * 400) + 300} ${String(Math.floor(Math.random() * 10000000)).padStart(7, '0')}`,
+      date: rfqDate.toISOString().split('T')[0],
+      time: `${String(Math.floor(Math.random() * 12) + 1).padStart(2, '0')}:${String(Math.floor(Math.random() * 60)).padStart(2, '0')} ${Math.random() > 0.5 ? 'AM' : 'PM'}`,
+      status,
+      product,
+      quantity,
+      description: `Need ${quantity} units of ${product} for construction project in ${city}.`,
+      deliveryLocation: `${city}, ${['DHA', 'Bahria Town', 'Model Town', 'Gulberg', 'Johar Town'][Math.floor(Math.random() * 5)]}`,
+      expectedDelivery: new Date(rfqDate.getTime() + (Math.floor(Math.random() * 20) + 5) * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
+      conversation,
+      priority: Math.random() > 0.7 ? 'high' : 'normal'
+    });
+  }
+
+  return rfqs.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+};
+
+const mockRFQs = generateMockRFQs();
+
+type Section = 'products' | 'add-product' | 'inventory' | 'stock-status' | 'orders' | 'rfq' | 'settings';
+type OnboardingStep = 'store' | 'documents' | 'subscription' | 'payment';
+
+export default function VendorDashboard() {
+  const params = useParams();
+  const router = useRouter();
+  const [activeSection, setActiveSection] = useState<Section>((params?.section as Section) || 'products');
+  const [searchQuery, setSearchQuery] = useState('');
+  const [filterCategory, setFilterCategory] = useState('All');
+  const [addProductForm, setAddProductForm] = useState({
+    title: '',
+    description: '',
+    price: '',
+    brand: '',
+    sku: '',
+    unit: '',
+    stockQuantity: '',
+    categoryId: '',
+    retail: '',
+    wholesale: '',
+    bulkb2b: '',
+    images: [] as (File | string)[],
+    warehousePrice: '',
+    exFactoryPrice: '',
+    exDestinationPrice: '',
+    modelNumber: '',
+    minimumOrder: '',
+    origin: '',
+    warranty: '',
+    shippingDays: '',
+    color: '',
+    size: '',
+    thickness: '',
+    material: '',
+    dimensions: '',
+  });
+
+  const [editingProductId, setEditingProductId] = useState<number | null>(null);
+
+  const [user, setUser] = useState<any>(null);
+
+  useEffect(() => {
+    const savedUser = localStorage.getItem('user');
+    if (savedUser) {
+      const parsedUser = JSON.parse(savedUser);
+      setUser(parsedUser);
+      // If profile is not complete, force them to the settings/onboarding section
+      if (parsedUser && !parsedUser.isProfileComplete) {
+        setActiveSection('settings');
+      }
+    }
+  }, []);
+
+  // Queries & Mutations
+  const { data: categoriesData, isLoading: categoriesLoading } = useCategories();
+  const { data: productsData, isLoading: productsLoading } = useProducts({ sellerId: user?.id }, { enabled: !!user?.id });
+  const createProductMutation = useCreateProductMutation();
+  const updateProductMutation = useUpdateProductMutation();
+  const deleteProductMutation = useDeleteProductMutation();
+
+  const categories = categoriesData || [];
+  const products = productsData || [];
+
+  // Orders state
+  const [orderStatusFilter, setOrderStatusFilter] = useState('all');
+  const [orderSearchQuery, setOrderSearchQuery] = useState('');
+  const [ordersPage, setOrdersPage] = useState(1);
+  const [expandedOrderId, setExpandedOrderId] = useState<string | null>(null);
+  const [dateFilter, setDateFilter] = useState('all');
+  const ordersPerPage = 10;
+
+  // RFQ state
+  const [rfqStatusFilter, setRfqStatusFilter] = useState('all');
+  const [selectedRFQ, setSelectedRFQ] = useState<string | null>(null);
+  const [replyMessage, setReplyMessage] = useState('');
+  const [quoteBasePrice, setQuoteBasePrice] = useState('');
+  const [quoteTotalPrice, setQuoteTotalPrice] = useState('');
+  const [quoteDescription, setQuoteDescription] = useState('');
+  const [rfqSearchQuery, setRfqSearchQuery] = useState('');
+  const [rfqPage, setRfqPage] = useState(1);
+  const [rfqDateFilter, setRfqDateFilter] = useState('all');
+  const [rfqPriorityFilter, setRfqPriorityFilter] = useState('all');
+  const rfqPerPage = 15;
+
+  // Settings / Onboarding state
+  const [onboardingStep, setOnboardingStep] = useState<OnboardingStep>('store');
+  const [accountType, setAccountType] = useState<'retailer' | 'wholesaler'>('retailer');
+  const [selectedPlan, setSelectedPlan] = useState<string | null>(null);
+  const [storeForm, setStoreForm] = useState({
+    shopName: '', logo: null as File | null, shopCoverImage: null as File | null,
+    address: '', cnic: '', ntn: '', businessLocation: '', warehouseLocation: '',
+    returnLocation: '',
+  });
+  const [bankForm, setBankForm] = useState({
+    accountTitle: '', accountNumber: '', branchCode: '', ibanNumber: ''
+  });
+  const onboardingSteps = ['store', 'documents', 'subscription', 'payment'];
+  const onboardingStepIdx = onboardingSteps.indexOf(onboardingStep);
+
+  const businessStep3Mutation = useCompleteBusinessStep3Mutation();
+  const documentsStep4Mutation = useCompleteDocumentsStep4Mutation();
+
+  const handleOnboardingNext = async () => {
+    if (onboardingStep === 'store') {
+      try {
+        await businessStep3Mutation.mutateAsync({
+          shopName: storeForm.shopName,
+          logo: storeForm.logo,
+          shopCoverImage: storeForm.shopCoverImage,
+          address: storeForm.address,
+          accountType: accountType,
+          businessAddress: storeForm.businessLocation,
+          warehouseAddress: storeForm.warehouseLocation,
+          returnAddress: storeForm.returnLocation,
+        });
+        toast.success("Business info saved");
+
+        // Update local user state
+        const updatedUser = { ...user, isProfileComplete: true };
+        setUser(updatedUser);
+        localStorage.setItem('user', JSON.stringify(updatedUser));
+      } catch (err) {
+        return;
+      }
+    } else if (onboardingStep === 'documents') {
+      try {
+        await documentsStep4Mutation.mutateAsync({
+          accountTitle: bankForm.accountTitle,
+          branchCode: bankForm.branchCode,
+          accountNumber: bankForm.accountNumber,
+          ibanNumber: bankForm.ibanNumber,
+        });
+        toast.success("Bank details saved");
+      } catch (err) {
+        return;
+      }
+    }
+
+    const nextStep = onboardingSteps[onboardingStepIdx + 1] as OnboardingStep;
+    if (nextStep) setOnboardingStep(nextStep);
+  };
+
+  const handleOnboardingBack = () => {
+    const prevStep = onboardingSteps[onboardingStepIdx - 1] as OnboardingStep;
+    if (prevStep) setOnboardingStep(prevStep);
+  };
+
+  const handlePublishProduct = async () => {
+    try {
+      if (!addProductForm.title || !addProductForm.price || !addProductForm.categoryId || !addProductForm.sku) {
+        toast.error("Please fill all required fields");
+        return;
+      }
+
+      const formData = new FormData();
+      Object.entries(addProductForm).forEach(([key, value]) => {
+        if (key === 'images') {
+          (value as any[]).forEach((img, index) => {
+            if (img instanceof File) {
+              formData.append(`images`, img);
+            } else if (typeof img === 'string') {
+              formData.append(`images`, img);
+            }
+          });
+        } else if (value !== '' && value !== null) {
+          formData.append(key, value as string);
+        }
+      });
+
+      if (editingProductId) {
+        await updateProductMutation.mutateAsync({ id: editingProductId, payload: formData });
+        toast.success("Product updated successfully");
+      } else {
+        await createProductMutation.mutateAsync(formData);
+        toast.success("Product published successfully");
+      }
+
+      // Reset form and go to products listing
+      setEditingProductId(null);
+      setAddProductForm({
+        title: '', description: '', price: '', brand: '', sku: '', unit: '',
+        stockQuantity: '', categoryId: '', retail: '', wholesale: '', bulkb2b: '',
+        images: [], warehousePrice: '', exFactoryPrice: '', exDestinationPrice: '',
+        modelNumber: '', minimumOrder: '', origin: '', warranty: '',
+        shippingDays: '', color: '', size: '', thickness: '', material: '', dimensions: '',
+      });
+      navigate2('products');
+    } catch (err: any) {
+      toast.error(err.response?.data?.message || "Failed to save product");
+    }
+  };
+
+  const handleEditProduct = (product: Product) => {
+    setEditingProductId(product.id);
+    setAddProductForm({
+      title: product.title,
+      description: product.description,
+      price: product.price.toString(),
+      brand: product.brand,
+      sku: product.sku,
+      unit: product.unit,
+      stockQuantity: product.stockQuantity.toString(),
+      categoryId: product.categoryId.toString(),
+      retail: product.retail?.toString() || '',
+      wholesale: product.wholesale?.toString() || '',
+      bulkb2b: product.bulkb2b?.toString() || '',
+      images: product.images,
+      warehousePrice: product.warehousePrice?.toString() || '',
+      exFactoryPrice: product.exFactoryPrice?.toString() || '',
+      exDestinationPrice: product.exDestinationPrice?.toString() || '',
+      modelNumber: product.modelNumber || '',
+      minimumOrder: product.minimumOrder?.toString() || '',
+      origin: product.origin || '',
+      warranty: product.warranty || '',
+      shippingDays: product.shippingDays || '',
+      color: product.color || '',
+      size: product.size || '',
+      thickness: product.thickness || '',
+      material: product.material || '',
+      dimensions: product.dimensions || '',
+    });
+    setActiveSection('add-product');
+  };
+
+  const handleDeleteProduct = async (id: number) => {
+    if (!confirm("Are you sure you want to delete this product?")) return;
+    try {
+      await deleteProductMutation.mutateAsync(id);
+      toast.success("Product deleted successfully");
+    } catch (err: any) {
+      toast.error("Failed to delete product");
+    }
+  };
+
+  // Stock status state
+  const [stockSearchQuery, setStockSearchQuery] = useState('');
+  const [selectedProducts, setSelectedProducts] = useState<number[]>([]);
+
+  const navigate2 = (section: Section) => {
+    setActiveSection(section);
+    router.push(`/vendor/dashboard/${section}`);
+  };
+
+  const stats = [
+    { label: 'Total Products', value: '126', icon: Package, color: '#3e3e3e', change: '+12%' },
+    { label: 'Total Orders', value: '1,247', icon: ShoppingBag, color: '#ef4136', change: '+8%' },
+    { label: 'Monthly Revenue', value: 'Rs. 2.4M', icon: DollarSign, color: '#10B981', change: '+23%' },
+    { label: 'Avg Rating', value: '4.3 ★', icon: Star, color: '#F59E0B', change: '+0.2' },
+  ];
+
+  const statusBadge = (status: string) => {
+    const map: Record<string, { label: string; color: string; bg: string }> = {
+      active: { label: 'Active', color: '#166534', bg: '#DCFCE7' },
+      low_stock: { label: 'Low Stock', color: '#92400E', bg: '#FEF3C7' },
+      out_of_stock: { label: 'Out of Stock', color: '#991B1B', bg: '#FEE2E2' },
+      pending: { label: 'Pending', color: '#92400E', bg: '#FEF3C7' },
+      shipped: { label: 'Shipped', color: '#1E40AF', bg: '#DBEAFE' },
+      delivered: { label: 'Delivered', color: '#166534', bg: '#DCFCE7' },
+      processing: { label: 'Processing', color: '#5B21B6', bg: '#EDE9FE' },
+    };
+    const s = map[status] || map.active;
+    return (
+      <span className="px-2 py-0.5 rounded-full text-xs font-semibold" style={{ color: s.color, backgroundColor: s.bg }}>
+        {s.label}
+      </span>
+    );
+  };
+
+  return (
+    <div className="flex h-screen overflow-hidden" style={{ backgroundColor: '#F1F5F9' }}>
+      {/* Sidebar */}
+      <aside className="w-64 flex-shrink-0 flex flex-col shadow-xl" style={{ backgroundColor: '#0D2E5E' }}>
+        {/* Logo */}
+        <div className="p-5 border-b" style={{ borderColor: '#1E4080' }}>
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 rounded-xl flex items-center justify-center" style={{ backgroundColor: '#ef4136' }}>
+              <HardHat size={22} className="text-white" />
+            </div>
+            <div>
+              <div className="text-white font-bold text-sm">Build Hub</div>
+              <div className="text-xs" style={{ color: '#ef4136' }}>Vendor Panel</div>
+            </div>
+          </div>
+        </div>
+
+        {/* Nav */}
+        <nav className="flex-1 p-4 space-y-1">
+          <p className="text-xs font-semibold mb-3 px-3" style={{ color: '#94A3B8' }}>MAIN MENU</p>
+          {navItems.map((item) => {
+            const Icon = item.icon;
+            const isActive = activeSection === item.id;
+            const isDisabled = user && !user.isProfileComplete && item.id !== 'settings';
+
+            return (
+              <button
+                key={item.id}
+                onClick={() => !isDisabled && navigate2(item.id as Section)}
+                disabled={isDisabled}
+                className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl transition-all ${isDisabled ? 'opacity-50 cursor-not-allowed' : ''}`}
+                style={{
+                  backgroundColor: isActive ? '#ef4136' : 'transparent',
+                  color: isActive ? 'white' : '#94A3B8',
+                }}
+              >
+                <Icon size={18} />
+                <span className="text-sm font-medium">{item.label}</span>
+                {isActive && <ChevronRight size={14} className="ml-auto" />}
+              </button>
+            );
+          })}
+
+          <div className="pt-4 border-t mt-4" style={{ borderColor: '#1E4080' }}>
+            <p className="text-xs font-semibold mb-3 px-3" style={{ color: '#94A3B8' }}>ACCOUNT</p>
+            <button
+              onClick={() => navigate2('settings')}
+              className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm transition-all"
+              style={{
+                backgroundColor: activeSection === 'settings' ? '#ef4136' : 'transparent',
+                color: activeSection === 'settings' ? 'white' : '#94A3B8',
+              }}
+            >
+              <Settings size={18} /> Settings
+              {activeSection === 'settings' && <ChevronRight size={14} className="ml-auto" />}
+            </button>
+            <button
+              onClick={() => router.push('/login')}
+              className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm"
+              style={{ color: '#94A3B8' }}
+            >
+              <LogOut size={18} /> Sign Out
+            </button>
+          </div>
+        </nav>
+
+        {/* Profile */}
+        <div className="p-4 border-t" style={{ borderColor: '#1E4080' }}>
+          <div className="flex items-center gap-3">
+            <div className="w-9 h-9 rounded-full flex items-center justify-center" style={{ backgroundColor: '#ef4136' }}>
+              <span className="text-white font-bold text-sm">AM</span>
+            </div>
+            <div>
+              <div className="text-white text-sm font-medium">Ahmed Materials</div>
+              <div className="text-xs flex items-center gap-1" style={{ color: '#10B981' }}>
+                <CheckCircle2 size={11} /> Verified Vendor
+              </div>
+            </div>
+          </div>
+        </div>
+      </aside>
+
+      {/* Main Content */}
+      <div className="flex-1 flex flex-col min-w-0">
+        {/* Top Header */}
+        <header className="bg-white border-b px-6 py-4 flex items-center justify-between" style={{ borderColor: '#E2E8F0' }}>
+          <div>
+            <h1 className="font-bold text-xl" style={{ color: '#0D2E5E' }}>
+              {activeSection === 'products' ? 'Products Listing' :
+                activeSection === 'add-product' ? 'Add New Product' :
+                  activeSection === 'inventory' ? 'Inventory Management' :
+                    activeSection === 'stock-status' ? 'Stock Status' :
+                      activeSection === 'rfq' ? 'RFQ Management' :
+                        activeSection === 'settings' ? 'Settings' : 'Orders'}
+            </h1>
+            <p className="text-sm" style={{ color: '#64748B' }}>
+              {activeSection === 'products' ? 'Manage your product catalog' :
+                activeSection === 'add-product' ? 'List a new product for sale' :
+                  activeSection === 'inventory' ? 'Track your stock levels' :
+                    activeSection === 'stock-status' ? 'Quickly update product availability status' :
+                      activeSection === 'rfq' ? 'Manage quotation requests from buyers' :
+                        activeSection === 'settings' ? 'Complete your store setup & manage your subscription' : 'Manage and fulfill customer orders'}
+            </p>
+          </div>
+          <div className="flex items-center gap-3">
+            <button className="relative p-2 rounded-xl border hover:bg-gray-50 transition-colors" style={{ borderColor: '#E2E8F0' }}>
+              <Bell size={20} style={{ color: '#64748B' }} />
+              <span className="absolute top-1 right-1 w-2 h-2 rounded-full" style={{ backgroundColor: '#ef4136' }} />
+            </button>
+            <div className="flex items-center gap-2 px-3 py-2 rounded-xl" style={{ backgroundColor: '#F0FDF4', border: '1px solid #BBF7D0' }}>
+              <CheckCircle2 size={16} style={{ color: '#10B981' }} />
+              <span className="text-xs font-semibold" style={{ color: '#166534' }}>Verified Vendor</span>
+            </div>
+          </div>
+        </header>
+
+        <DemoNav />
+
+        {/* Content Area */}
+        <main className="flex-1 overflow-y-auto p-6">
+
+          {/* ─── PRODUCTS LISTING ─── */}
+          {activeSection === 'products' && (
+            <div className="space-y-5">
+              {/* Stats */}
+              <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+                {stats.map((s) => {
+                  const Icon = s.icon;
+                  return (
+                    <div key={s.label} className="bg-white rounded-2xl p-5 shadow-sm border" style={{ borderColor: '#E2E8F0' }}>
+                      <div className="flex items-center justify-between mb-3">
+                        <div className="w-10 h-10 rounded-xl flex items-center justify-center" style={{ backgroundColor: `${s.color}15` }}>
+                          <Icon size={20} style={{ color: s.color }} />
+                        </div>
+                        <span className="text-xs font-semibold" style={{ color: '#10B981' }}>{s.change}</span>
+                      </div>
+                      <div className="font-bold text-xl" style={{ color: '#0D2E5E' }}>{s.value}</div>
+                      <div className="text-xs mt-0.5" style={{ color: '#64748B' }}>{s.label}</div>
+                    </div>
+                  );
+                })}
+              </div>
+
+              {/* Filters */}
+              <div className="bg-white rounded-2xl shadow-sm border p-4 flex flex-wrap gap-3 items-center" style={{ borderColor: '#E2E8F0' }}>
+                <div className="relative flex-1 min-w-48">
+                  <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2" style={{ color: '#94A3B8' }} />
+                  <input
+                    type="text"
+                    value={searchQuery}
+                    onChange={(e) => setSearchQuery(e.target.value)}
+                    placeholder="Search products..."
+                    className="w-full pl-9 pr-4 py-2.5 rounded-xl border text-sm outline-none"
+                    style={{ borderColor: '#E2E8F0', backgroundColor: '#F8FAFC' }}
+                  />
+                </div>
+                <select
+                  value={filterCategory}
+                  onChange={(e) => setFilterCategory(e.target.value)}
+                  className="px-3 py-2.5 rounded-xl border text-sm outline-none"
+                  style={{ borderColor: '#E2E8F0', backgroundColor: '#F8FAFC' }}
+                >
+                  <option value="All">All Categories</option>
+                  {categories.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
+                </select>
+                <button
+                  onClick={() => navigate2('add-product')}
+                  className="px-4 py-2.5 rounded-xl text-white font-medium text-sm flex items-center gap-2 hover:opacity-90"
+                  style={{ backgroundColor: '#ef4136' }}
+                >
+                  <Plus size={16} /> Add Product
+                </button>
+              </div>
+
+              {/* Products Table */}
+              <div className="bg-white rounded-2xl shadow-sm border overflow-hidden" style={{ borderColor: '#E2E8F0' }}>
+                <table className="w-full">
+                  <thead>
+                    <tr style={{ backgroundColor: '#F8FAFC' }}>
+                      <th className="px-5 py-3.5 text-left text-xs font-semibold" style={{ color: '#64748B' }}>PRODUCT</th>
+                      <th className="px-5 py-3.5 text-left text-xs font-semibold hidden md:table-cell" style={{ color: '#64748B' }}>CATEGORY</th>
+                      <th className="px-5 py-3.5 text-left text-xs font-semibold" style={{ color: '#64748B' }}>PRICE</th>
+                      <th className="px-5 py-3.5 text-left text-xs font-semibold hidden sm:table-cell" style={{ color: '#64748B' }}>STOCK</th>
+                      <th className="px-5 py-3.5 text-left text-xs font-semibold" style={{ color: '#64748B' }}>STATUS</th>
+                      <th className="px-5 py-3.5 text-left text-xs font-semibold hidden lg:table-cell" style={{ color: '#64748B' }}>RATING</th>
+                      <th className="px-5 py-3.5 text-left text-xs font-semibold" style={{ color: '#64748B' }}>ACTIONS</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y" style={{ borderColor: '#F1F5F9' }}>
+                    {products
+                      .filter((p) => p.title.toLowerCase().includes(searchQuery.toLowerCase()))
+                      .map((product) => (
+                        <tr key={product.id} className="hover:bg-gray-50 transition-colors">
+                          <td className="px-5 py-4">
+                            <div className="flex items-center gap-3">
+                              <img src={product.images[0]} alt={product.title} className="w-10 h-10 rounded-lg object-cover" />
+                              <div>
+                                <div className="text-sm font-semibold" style={{ color: '#1E293B' }}>{product.title}</div>
+                                <div className="text-xs" style={{ color: '#94A3B8' }}>SKU: {product.sku}</div>
+                              </div>
+                            </div>
+                          </td>
+                          <td className="px-5 py-4 hidden md:table-cell">
+                            <span className="text-sm" style={{ color: '#64748B' }}>{product.category?.name}</span>
+                          </td>
+                          <td className="px-5 py-4">
+                            <span className="text-sm font-semibold" style={{ color: '#0D2E5E' }}>Rs. {product.price.toLocaleString()}</span>
+                          </td>
+                          <td className="px-5 py-4 hidden sm:table-cell">
+                            <span className="text-sm" style={{ color: product.stockQuantity === 0 ? '#EF4444' : product.stockQuantity < 10 ? '#F59E0B' : '#1E293B' }}>
+                              {product.stockQuantity} {product.unit}
+                            </span>
+                          </td>
+                          <td className="px-5 py-4">{statusBadge(product.productStatus || 'active')}</td>
+                          <td className="px-5 py-4 hidden lg:table-cell">
+                            <span className="text-sm font-medium flex items-center gap-1" style={{ color: '#F59E0B' }}>
+                              ★ 4.5
+                            </span>
+                          </td>
+                          <td className="px-5 py-4">
+                            <div className="flex items-center gap-2">
+                              <button 
+                                onClick={() => handleEditProduct(product)}
+                                className="p-1.5 rounded-lg hover:bg-blue-50 transition-colors" title="Edit"
+                              >
+                                <Edit size={15} style={{ color: '#3B82F6' }} />
+                              </button>
+                              <button className="p-1.5 rounded-lg hover:bg-gray-100 transition-colors" title="View">
+                                <Eye size={15} style={{ color: '#64748B' }} />
+                              </button>
+                              <button 
+                                onClick={() => handleDeleteProduct(product.id)}
+                                className="p-1.5 rounded-lg hover:bg-red-50 transition-colors" title="Delete"
+                              >
+                                <Trash2 size={15} style={{ color: '#EF4444' }} />
+                              </button>
+                            </div>
+                          </td>
+                        </tr>
+                      ))}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          )}
+
+          {/* ─── ADD PRODUCT ─── */}
+          {activeSection === 'add-product' && (
+            <div className="max-w-3xl">
+              {/* SLA Alert */}
+              <div className="flex items-start gap-3 p-4 rounded-2xl mb-6" style={{ backgroundColor: '#FEF3C7', border: '2px solid #FCD34D' }}>
+                <AlertTriangle size={20} style={{ color: '#D97706', flexShrink: 0, marginTop: 1 }} />
+                <div>
+                  <p className="font-bold text-sm" style={{ color: '#92400E' }}>⏱ SLA Requirement</p>
+                  <p className="text-sm mt-0.5" style={{ color: '#B45309' }}>
+                    <strong>Orders must be shipped within 48 hours</strong> of confirmation. Failure to comply may result in account suspension.
+                  </p>
+                </div>
+              </div>
+
+              <div className="bg-white rounded-2xl shadow-sm border p-6 space-y-6" style={{ borderColor: '#E2E8F0' }}>
+                {/* Category */}
+                <div>
+                  <label className="block text-sm font-semibold mb-1.5" style={{ color: '#334155' }}>Product Category *</label>
+                  <select
+                    value={addProductForm.categoryId}
+                    onChange={(e) => setAddProductForm({ ...addProductForm, categoryId: e.target.value })}
+                    className="w-full px-4 py-3 rounded-xl border text-sm outline-none"
+                    style={{ borderColor: '#E2E8F0', backgroundColor: '#F8FAFC' }}
+                  >
+                    <option value="">Select a category...</option>
+                    {categories.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
+                  </select>
+                </div>
+
+                {/* Title */}
+                <div>
+                  <label className="block text-sm font-semibold mb-1.5" style={{ color: '#334155' }}>Product Title *</label>
+                  <input
+                    type="text"
+                    value={addProductForm.title}
+                    onChange={(e) => setAddProductForm({ ...addProductForm, title: e.target.value })}
+                    placeholder="e.g. OPC Cement 50kg Bag — Bestway"
+                    className="w-full px-4 py-3 rounded-xl border text-sm outline-none"
+                    style={{ borderColor: '#E2E8F0', backgroundColor: '#F8FAFC' }}
+                  />
+                </div>
+
+                {/* Brand & SKU & Unit */}
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                  <div>
+                    <label className="block text-sm font-semibold mb-1.5" style={{ color: '#334155' }}>Brand *</label>
+                    <input
+                      type="text"
+                      value={addProductForm.brand}
+                      onChange={(e) => setAddProductForm({ ...addProductForm, brand: e.target.value })}
+                      placeholder="e.g. Bestway"
+                      className="w-full px-4 py-3 rounded-xl border text-sm outline-none"
+                      style={{ borderColor: '#E2E8F0', backgroundColor: '#F8FAFC' }}
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-semibold mb-1.5" style={{ color: '#334155' }}>SKU *</label>
+                    <input
+                      type="text"
+                      value={addProductForm.sku}
+                      onChange={(e) => setAddProductForm({ ...addProductForm, sku: e.target.value })}
+                      placeholder="e.g. CEM-001"
+                      className="w-full px-4 py-3 rounded-xl border text-sm outline-none"
+                      style={{ borderColor: '#E2E8F0', backgroundColor: '#F8FAFC' }}
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-semibold mb-1.5" style={{ color: '#334155' }}>Unit *</label>
+                    <input
+                      type="text"
+                      value={addProductForm.unit}
+                      onChange={(e) => setAddProductForm({ ...addProductForm, unit: e.target.value })}
+                      placeholder="e.g. Bag, kg, ft"
+                      className="w-full px-4 py-3 rounded-xl border text-sm outline-none"
+                      style={{ borderColor: '#E2E8F0', backgroundColor: '#F8FAFC' }}
+                    />
+                  </div>
+                </div>
+
+                {/* Main Price & Stock */}
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-sm font-semibold mb-1.5" style={{ color: '#334155' }}>Base Price (Rs.) *</label>
+                    <input
+                      type="number"
+                      value={addProductForm.price}
+                      onChange={(e) => setAddProductForm({ ...addProductForm, price: e.target.value })}
+                      placeholder="e.g. 1200"
+                      className="w-full px-4 py-3 rounded-xl border text-sm outline-none"
+                      style={{ borderColor: '#E2E8F0', backgroundColor: '#F8FAFC' }}
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-semibold mb-1.5" style={{ color: '#334155' }}>Stock Quantity *</label>
+                    <input
+                      type="number"
+                      value={addProductForm.stockQuantity}
+                      onChange={(e) => setAddProductForm({ ...addProductForm, stockQuantity: e.target.value })}
+                      placeholder="e.g. 500"
+                      className="w-full px-4 py-3 rounded-xl border text-sm outline-none"
+                      style={{ borderColor: '#E2E8F0', backgroundColor: '#F8FAFC' }}
+                    />
+                  </div>
+                </div>
+
+                {/* Images / Videos */}
+                <div>
+                  <label className="block text-sm font-semibold mb-1.5" style={{ color: '#334155' }}>Product Images & Videos *</label>
+                  <input
+                    type="file"
+                    multiple
+                    accept="image/*,video/*"
+                    id="product-files"
+                    className="hidden"
+                    onChange={(e) => {
+                      if (e.target.files) {
+                        setAddProductForm({ ...addProductForm, images: [...addProductForm.images, ...Array.from(e.target.files)] });
+                      }
+                    }}
+                  />
+                  <label
+                    htmlFor="product-files"
+                    className="border-2 border-dashed rounded-xl p-8 text-center block cursor-pointer hover:bg-gray-50"
+                    style={{ borderColor: '#CBD5E1' }}
+                  >
+                    <Image size={36} className="mx-auto mb-3" style={{ color: '#94A3B8' }} />
+                    <p className="text-sm font-semibold" style={{ color: '#334155' }}>Click to upload images/videos</p>
+                    <p className="text-xs mt-1" style={{ color: '#94A3B8' }}>{addProductForm.images.length} files selected</p>
+                  </label>
+                  
+                  {/* Image Previews */}
+                  {addProductForm.images.length > 0 && (
+                    <div className="flex flex-wrap gap-2 mt-4">
+                      {addProductForm.images.map((img, idx) => (
+                        <div key={idx} className="relative w-16 h-16 rounded-lg overflow-hidden border">
+                          <img 
+                            src={typeof img === 'string' ? img : URL.createObjectURL(img)} 
+                            className="w-full h-full object-cover" 
+                          />
+                          <button
+                            onClick={() => {
+                              const newImgs = [...addProductForm.images];
+                              newImgs.splice(idx, 1);
+                              setAddProductForm({ ...addProductForm, images: newImgs });
+                            }}
+                            className="absolute top-0 right-0 bg-red-500 text-white rounded-bl-lg p-0.5"
+                          >
+                            <Trash2 size={10} />
+                          </button>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+
+                {/* Description */}
+                <div>
+                  <label className="block text-sm font-semibold mb-1.5" style={{ color: '#334155' }}>Description *</label>
+                  <textarea
+                    value={addProductForm.description}
+                    onChange={(e) => setAddProductForm({ ...addProductForm, description: e.target.value })}
+                    placeholder="Describe your product in detail — specifications, dimensions, brand, etc."
+                    rows={4}
+                    className="w-full px-4 py-3 rounded-xl border text-sm outline-none resize-none"
+                    style={{ borderColor: '#E2E8F0', backgroundColor: '#F8FAFC' }}
+                  />
+                </div>
+
+                {/* Pricing Tiers */}
+                <div>
+                  <label className="block text-sm font-semibold mb-3" style={{ color: '#334155' }}>
+                    <Tag size={16} className="inline mr-2" style={{ color: '#ef4136' }} />
+                    Pricing Tiers (Rs.)
+                  </label>
+                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                    {[
+                      { key: 'retail', label: 'Retail Price', desc: 'Per unit', placeholder: 'e.g. 1200' },
+                      { key: 'wholesale', label: 'Wholesale Price', desc: 'Min 10 units', placeholder: 'e.g. 1100' },
+                      { key: 'bulkb2b', label: 'Bulk Price', desc: 'Min 100 units', placeholder: 'e.g. 980' },
+                    ].map((tier) => (
+                      <div key={tier.key} className="p-4 rounded-xl border" style={{ borderColor: '#E2E8F0' }}>
+                        <label className="text-xs font-semibold block mb-0.5" style={{ color: '#0D2E5E' }}>{tier.label}</label>
+                        <p className="text-xs mb-2" style={{ color: '#94A3B8' }}>{tier.desc}</p>
+                        <div className="relative">
+                          <span className="absolute left-3 top-1/2 -translate-y-1/2 text-xs font-semibold" style={{ color: '#64748B' }}>Rs.</span>
+                          <input
+                            type="number"
+                            value={addProductForm[tier.key as keyof typeof addProductForm] as string}
+                            onChange={(e) => setAddProductForm({ ...addProductForm, [tier.key]: e.target.value })}
+                            placeholder={tier.placeholder}
+                            className="w-full pl-8 pr-3 py-2.5 rounded-lg border text-sm outline-none"
+                            style={{ borderColor: '#E2E8F0', backgroundColor: '#F8FAFC' }}
+                          />
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                  <div className="mt-3">
+                    <label className="block text-xs font-semibold mb-1.5" style={{ color: '#334155' }}>Minimum Order Quantity</label>
+                    <input 
+                      type="number" 
+                      value={addProductForm.minimumOrder}
+                      onChange={(e) => setAddProductForm({ ...addProductForm, minimumOrder: e.target.value })}
+                      placeholder="e.g. 10" 
+                      className="w-32 px-3 py-2.5 rounded-xl border text-sm outline-none" 
+                      style={{ borderColor: '#E2E8F0', backgroundColor: '#F8FAFC' }} 
+                    />
+                  </div>
+                </div>
+
+                {/* Additional Pricing & Origin */}
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  <div>
+                    <label className="text-xs font-semibold block mb-1.5" style={{ color: '#334155' }}>Warehouse Price (Rs.)</label>
+                    <input
+                      type="number"
+                      value={addProductForm.warehousePrice}
+                      onChange={(e) => setAddProductForm({ ...addProductForm, warehousePrice: e.target.value })}
+                      placeholder="e.g. 1150"
+                      className="w-full px-4 py-3 rounded-xl border text-sm outline-none"
+                      style={{ borderColor: '#E2E8F0', backgroundColor: '#F8FAFC' }}
+                    />
+                  </div>
+                  <div>
+                    <label className="text-xs font-semibold block mb-1.5" style={{ color: '#334155' }}>Origin</label>
+                    <input
+                      type="text"
+                      value={addProductForm.origin}
+                      onChange={(e) => setAddProductForm({ ...addProductForm, origin: e.target.value })}
+                      placeholder="e.g. Pakistan, China"
+                      className="w-full px-4 py-3 rounded-xl border text-sm outline-none"
+                      style={{ borderColor: '#E2E8F0', backgroundColor: '#F8FAFC' }}
+                    />
+                  </div>
+                </div>
+
+                {/* Product Specifications */}
+                <div>
+                  <label className="block text-sm font-semibold mb-3" style={{ color: '#334155' }}>
+                    <Settings size={16} className="inline mr-2" style={{ color: '#64748B' }} />
+                    Product Specifications
+                  </label>
+                  <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+                    {[
+                      { key: 'color', label: 'Color', placeholder: 'Blue' },
+                      { key: 'size', label: 'Size', placeholder: 'Large' },
+                      { key: 'material', label: 'Material', placeholder: 'Steel' },
+                      { key: 'thickness', label: 'Thickness', placeholder: '10mm' },
+                    ].map((spec) => (
+                      <div key={spec.key}>
+                        <label className="text-xs font-semibold block mb-1.5" style={{ color: '#0D2E5E' }}>{spec.label}</label>
+                        <input
+                          type="text"
+                          value={addProductForm[spec.key as keyof typeof addProductForm] as string}
+                          onChange={(e) => setAddProductForm({ ...addProductForm, [spec.key]: e.target.value })}
+                          placeholder={spec.placeholder}
+                          className="w-full px-4 py-3 rounded-xl border text-sm outline-none"
+                          style={{ borderColor: '#E2E8F0', backgroundColor: '#F8FAFC' }}
+                        />
+                      </div>
+                    ))}
+                  </div>
+                </div>
+
+                {/* Shipping & Warranty */}
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-sm font-semibold mb-1.5" style={{ color: '#334155' }}>Shipping Days</label>
+                    <input
+                      type="text"
+                      value={addProductForm.shippingDays}
+                      onChange={(e) => setAddProductForm({ ...addProductForm, shippingDays: e.target.value })}
+                      placeholder="e.g. 2-3 working days"
+                      className="w-full px-4 py-3 rounded-xl border text-sm outline-none"
+                      style={{ borderColor: '#E2E8F0', backgroundColor: '#F8FAFC' }}
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-semibold mb-1.5" style={{ color: '#334155' }}>Warranty</label>
+                    <input
+                      type="text"
+                      value={addProductForm.warranty}
+                      onChange={(e) => setAddProductForm({ ...addProductForm, warranty: e.target.value })}
+                      placeholder="e.g. 1 Year Brand Warranty"
+                      className="w-full px-4 py-3 rounded-xl border text-sm outline-none"
+                      style={{ borderColor: '#E2E8F0', backgroundColor: '#F8FAFC' }}
+                    />
+                  </div>
+                </div>
+
+                {/* Submit */}
+                <div className="flex items-center gap-3 pt-4 border-t" style={{ borderColor: '#F1F5F9' }}>
+                  <button 
+                    onClick={() => {
+                      setEditingProductId(null);
+                      setAddProductForm({
+                        title: '', description: '', price: '', brand: '', sku: '', unit: '',
+                        stockQuantity: '', categoryId: '', retail: '', wholesale: '', bulkb2b: '',
+                        images: [], warehousePrice: '', exFactoryPrice: '', exDestinationPrice: '',
+                        modelNumber: '', minimumOrder: '', origin: '', warranty: '',
+                        shippingDays: '', color: '', size: '', thickness: '', material: '', dimensions: '',
+                      });
+                      navigate2('products');
+                    }}
+                    className="px-6 py-3 rounded-xl border font-semibold text-sm hover:bg-gray-50" 
+                    style={{ borderColor: '#E2E8F0', color: '#64748B' }}
+                  >
+                    Cancel
+                  </button>
+                  <button 
+                    onClick={handlePublishProduct}
+                    disabled={createProductMutation.isPending || updateProductMutation.isPending}
+                    className="flex-1 py-3 rounded-xl text-white font-semibold hover:opacity-90 text-sm disabled:opacity-50"
+                    style={{ backgroundColor: '#ef4136' }}
+                  >
+                    {createProductMutation.isPending || updateProductMutation.isPending ? (
+                      <span className="flex items-center justify-center gap-2">
+                        <RefreshCw size={16} className="animate-spin" />
+                        Saving...
+                      </span>
+                    ) : (
+                      editingProductId ? 'Update Product' : 'Publish Product'
+                    )}
+                  </button>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* ─── INVENTORY ─── */}
+          {activeSection === 'inventory' && (
+            <div className="space-y-5">
+              {/* Summary cards */}
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                {[
+                  { label: 'Total SKUs', value: '126', icon: Box, color: '#0D2E5E' },
+                  { label: 'Low Stock Items', value: '8', icon: AlertTriangle, color: '#F59E0B' },
+                  { label: 'Out of Stock', value: '3', icon: XCircle, color: '#EF4444' },
+                ].map((c) => {
+                  const Icon = c.icon;
+                  return (
+                    <div key={c.label} className="bg-white rounded-2xl p-5 shadow-sm border flex items-center gap-4" style={{ borderColor: '#E2E8F0' }}>
+                      <div className="w-12 h-12 rounded-xl flex items-center justify-center" style={{ backgroundColor: `${c.color}15` }}>
+                        <Icon size={22} style={{ color: c.color }} />
+                      </div>
+                      <div>
+                        <div className="font-bold text-2xl" style={{ color: '#0D2E5E' }}>{c.value}</div>
+                        <div className="text-xs" style={{ color: '#64748B' }}>{c.label}</div>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+
+              {/* Inventory table */}
+              <div className="bg-white rounded-2xl shadow-sm border overflow-hidden" style={{ borderColor: '#E2E8F0' }}>
+                <div className="px-5 py-4 border-b flex items-center justify-between" style={{ borderColor: '#F1F5F9' }}>
+                  <h3 className="font-semibold" style={{ color: '#0D2E5E' }}>Stock Levels</h3>
+                  <button className="flex items-center gap-1.5 text-sm" style={{ color: '#ef4136' }}>
+                    <RefreshCw size={14} /> Refresh
+                  </button>
+                </div>
+                <div className="divide-y" style={{ borderColor: '#F1F5F9' }}>
+                  {inventoryItems.map((item) => {
+                    const pct = item.max > 0 ? (item.current / item.max) * 100 : 0;
+                    const isLow = item.current > 0 && item.current < item.min;
+                    const isOut = item.current === 0;
+                    return (
+                      <div key={item.sku} className="px-5 py-4 flex items-center gap-4">
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-center gap-2 mb-1">
+                            <span className="font-semibold text-sm" style={{ color: '#1E293B' }}>{item.name}</span>
+                            {isOut && <span className="px-2 py-0.5 rounded-full text-xs font-semibold" style={{ color: '#991B1B', backgroundColor: '#FEE2E2' }}>Out of Stock</span>}
+                            {isLow && <span className="px-2 py-0.5 rounded-full text-xs font-semibold" style={{ color: '#92400E', backgroundColor: '#FEF3C7' }}>Low Stock</span>}
+                          </div>
+                          <div className="flex items-center gap-2 mb-2">
+                            <span className="text-xs" style={{ color: '#94A3B8' }}>SKU: {item.sku}</span>
+                            <span className="text-xs" style={{ color: '#94A3B8' }}>·</span>
+                            <span className="text-xs" style={{ color: '#64748B' }}>{item.category}</span>
+                          </div>
+                          <div className="w-full rounded-full h-2" style={{ backgroundColor: '#E2E8F0' }}>
+                            <div
+                              className="h-2 rounded-full transition-all"
+                              style={{
+                                width: `${pct}%`,
+                                backgroundColor: isOut ? '#EF4444' : isLow ? '#F59E0B' : '#10B981',
+                              }}
+                            />
+                          </div>
+                        </div>
+                        <div className="text-right flex-shrink-0">
+                          <div className="font-bold" style={{ color: isOut ? '#EF4444' : isLow ? '#F59E0B' : '#0D2E5E' }}>
+                            {item.current}
+                          </div>
+                          <div className="text-xs" style={{ color: '#94A3B8' }}>/ {item.max} units</div>
+                        </div>
+                        <button className="p-1.5 rounded-lg hover:bg-gray-100 transition-colors">
+                          <Edit size={15} style={{ color: '#64748B' }} />
+                        </button>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* ─── ORDERS ─── */}
+          {activeSection === 'orders' && (() => {
+            // Filter orders
+            const filteredOrders = mockOrders.filter((order) => {
+              const matchesStatus = orderStatusFilter === 'all' || order.status === orderStatusFilter;
+              const matchesSearch = order.id.toLowerCase().includes(orderSearchQuery.toLowerCase()) ||
+                order.buyer.toLowerCase().includes(orderSearchQuery.toLowerCase()) ||
+                order.city.toLowerCase().includes(orderSearchQuery.toLowerCase());
+
+              let matchesDate = true;
+              if (dateFilter !== 'all') {
+                const orderDate = new Date(order.date);
+                const now = new Date();
+                if (dateFilter === 'today') {
+                  matchesDate = orderDate.toDateString() === now.toDateString();
+                } else if (dateFilter === 'week') {
+                  const weekAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
+                  matchesDate = orderDate >= weekAgo;
+                } else if (dateFilter === 'month') {
+                  matchesDate = orderDate.getMonth() === now.getMonth() && orderDate.getFullYear() === now.getFullYear();
+                }
+              }
+
+              return matchesStatus && matchesSearch && matchesDate;
+            });
+
+            const statusCounts = {
+              all: mockOrders.length,
+              pending: mockOrders.filter(o => o.status === 'pending').length,
+              processing: mockOrders.filter(o => o.status === 'processing').length,
+              shipped: mockOrders.filter(o => o.status === 'shipped').length,
+              delivered: mockOrders.filter(o => o.status === 'delivered').length,
+              cancelled: mockOrders.filter(o => o.status === 'cancelled').length,
+            };
+
+            // Pagination
+            const totalPages = Math.ceil(filteredOrders.length / ordersPerPage);
+            const paginatedOrders = filteredOrders.slice(
+              (ordersPage - 1) * ordersPerPage,
+              ordersPage * ordersPerPage
+            );
+
+            const handleStatusChange = (orderId: string, newStatus: string) => {
+              const orderIndex = mockOrders.findIndex(o => o.id === orderId);
+              if (orderIndex !== -1) {
+                mockOrders[orderIndex].status = newStatus;
+              }
+            };
+
+            return (
+              <div className="space-y-5">
+                {/* Stats */}
+                <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+                  {[
+                    { label: 'Pending', value: statusCounts.pending, color: '#F59E0B', icon: Clock },
+                    { label: 'Processing', value: statusCounts.processing, color: '#8B5CF6', icon: RefreshCw },
+                    { label: 'Shipped', value: statusCounts.shipped, color: '#3B82F6', icon: Truck },
+                    { label: 'Delivered', value: statusCounts.delivered, color: '#10B981', icon: CheckCircle2 },
+                  ].map((s) => {
+                    const Icon = s.icon;
+                    return (
+                      <div key={s.label} className="bg-white rounded-2xl p-4 shadow-sm border flex items-center gap-3" style={{ borderColor: '#E2E8F0' }}>
+                        <div className="w-11 h-11 rounded-xl flex items-center justify-center" style={{ backgroundColor: `${s.color}15` }}>
+                          <Icon size={20} style={{ color: s.color }} />
+                        </div>
+                        <div>
+                          <div className="font-bold text-xl" style={{ color: '#0D2E5E' }}>{s.value}</div>
+                          <div className="text-xs" style={{ color: '#64748B' }}>{s.label}</div>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+
+                {/* SLA Reminder */}
+                <div className="flex items-center gap-3 p-4 rounded-xl" style={{ backgroundColor: '#FEF3C7', border: '1px solid #FCD34D' }}>
+                  <Clock size={18} style={{ color: '#D97706' }} />
+                  <p className="text-sm" style={{ color: '#92400E' }}>
+                    <strong>SLA Reminder:</strong> All pending orders must be shipped within <strong>48 hours</strong> of order placement.
+                  </p>
+                </div>
+
+                {/* Status Tabs */}
+                <div className="bg-white rounded-2xl shadow-sm border overflow-x-auto" style={{ borderColor: '#E2E8F0' }}>
+                  <div className="flex border-b" style={{ borderColor: '#E2E8F0' }}>
+                    {[
+                      { id: 'all', label: 'All Orders', count: statusCounts.all },
+                      { id: 'pending', label: 'Pending', count: statusCounts.pending },
+                      { id: 'processing', label: 'Processing', count: statusCounts.processing },
+                      { id: 'shipped', label: 'Shipped', count: statusCounts.shipped },
+                      { id: 'delivered', label: 'Delivered', count: statusCounts.delivered },
+                      { id: 'cancelled', label: 'Cancelled', count: statusCounts.cancelled },
+                    ].map((tab) => (
+                      <button
+                        key={tab.id}
+                        onClick={() => {
+                          setOrderStatusFilter(tab.id);
+                          setOrdersPage(1);
+                        }}
+                        className="px-6 py-4 text-sm font-semibold whitespace-nowrap border-b-2 transition-colors"
+                        style={{
+                          borderColor: orderStatusFilter === tab.id ? '#ef4136' : 'transparent',
+                          color: orderStatusFilter === tab.id ? '#ef4136' : '#64748B'
+                        }}
+                      >
+                        {tab.label}
+                        <span className="ml-2 px-2 py-0.5 rounded-full text-xs" style={{
+                          backgroundColor: orderStatusFilter === tab.id ? '#FEF3C7' : '#F1F5F9',
+                          color: orderStatusFilter === tab.id ? '#92400E' : '#64748B'
+                        }}>
+                          {tab.count}
+                        </span>
+                      </button>
+                    ))}
+                  </div>
+
+                  {/* Filters & Actions */}
+                  <div className="p-4 border-b flex flex-wrap gap-3 items-center" style={{ borderColor: '#E2E8F0' }}>
+                    <div className="relative flex-1 min-w-64">
+                      <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2" style={{ color: '#94A3B8' }} />
+                      <input
+                        type="text"
+                        value={orderSearchQuery}
+                        onChange={(e) => {
+                          setOrderSearchQuery(e.target.value);
+                          setOrdersPage(1);
+                        }}
+                        placeholder="Search by Order ID, Buyer, or City..."
+                        className="w-full pl-9 pr-4 py-2.5 rounded-xl border text-sm outline-none"
+                        style={{ borderColor: '#E2E8F0', backgroundColor: '#F8FAFC' }}
+                      />
+                    </div>
+                    <select
+                      value={dateFilter}
+                      onChange={(e) => {
+                        setDateFilter(e.target.value);
+                        setOrdersPage(1);
+                      }}
+                      className="px-4 py-2.5 rounded-xl border text-sm outline-none flex items-center gap-2"
+                      style={{ borderColor: '#E2E8F0', backgroundColor: '#F8FAFC' }}
+                    >
+                      <option value="all">All Time</option>
+                      <option value="today">Today</option>
+                      <option value="week">Last 7 Days</option>
+                      <option value="month">This Month</option>
+                    </select>
+                    <button
+                      className="px-4 py-2.5 rounded-xl border text-sm font-semibold flex items-center gap-2 hover:bg-gray-50 transition-colors"
+                      style={{ borderColor: '#E2E8F0', color: '#0D2E5E' }}
+                    >
+                      <Download size={16} /> Export
+                    </button>
+                  </div>
+
+                  {/* Orders List */}
+                  <div className="divide-y" style={{ borderColor: '#F1F5F9' }}>
+                    {paginatedOrders.length > 0 ? paginatedOrders.map((order) => (
+                      <div key={order.id}>
+                        <div className="p-5 hover:bg-gray-50 transition-colors">
+                          <div className="flex items-center justify-between gap-4">
+                            {/* Order Info */}
+                            <div className="flex items-center gap-4 flex-1">
+                              <button
+                                onClick={() => setExpandedOrderId(expandedOrderId === order.id ? null : order.id)}
+                                className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
+                              >
+                                {expandedOrderId === order.id ? (
+                                  <ChevronUp size={18} style={{ color: '#64748B' }} />
+                                ) : (
+                                  <ChevronDown size={18} style={{ color: '#64748B' }} />
+                                )}
+                              </button>
+                              <div className="flex-1 grid grid-cols-1 md:grid-cols-4 gap-4">
+                                <div>
+                                  <div className="text-xs mb-1" style={{ color: '#94A3B8' }}>Order ID</div>
+                                  <div className="font-mono font-semibold text-sm" style={{ color: '#0D2E5E' }}>{order.id}</div>
+                                  <div className="text-xs mt-0.5" style={{ color: '#94A3B8' }}>{order.date} {order.time}</div>
+                                </div>
+                                <div>
+                                  <div className="text-xs mb-1" style={{ color: '#94A3B8' }}>Customer</div>
+                                  <div className="font-semibold text-sm" style={{ color: '#1E293B' }}>{order.buyer}</div>
+                                  <div className="text-xs mt-0.5 flex items-center gap-1" style={{ color: '#94A3B8' }}>
+                                    <MapPin size={10} /> {order.city}
+                                  </div>
+                                </div>
+                                <div>
+                                  <div className="text-xs mb-1" style={{ color: '#94A3B8' }}>Amount</div>
+                                  <div className="font-bold text-sm" style={{ color: '#0D2E5E' }}>Rs. {order.total.toLocaleString()}</div>
+                                  <div className="text-xs mt-0.5" style={{ color: '#94A3B8' }}>{order.itemCount} items • {order.paymentMethod}</div>
+                                </div>
+                                <div>
+                                  <div className="text-xs mb-1" style={{ color: '#94A3B8' }}>Status</div>
+                                  <select
+                                    value={order.status}
+                                    onChange={(e) => handleStatusChange(order.id, e.target.value)}
+                                    onClick={(e) => e.stopPropagation()}
+                                    className="px-3 py-1.5 rounded-lg border text-xs font-semibold outline-none cursor-pointer"
+                                    style={{ borderColor: '#E2E8F0' }}
+                                  >
+                                    <option value="pending">Pending</option>
+                                    <option value="processing">Processing</option>
+                                    <option value="shipped">Shipped</option>
+                                    <option value="delivered">Delivered</option>
+                                    <option value="cancelled">Cancelled</option>
+                                  </select>
+                                </div>
+                              </div>
+                            </div>
+
+                            {/* Actions */}
+                            <div className="flex items-center gap-2">
+                              <button className="p-2 rounded-lg hover:bg-blue-50 transition-colors" title="View Details">
+                                <Eye size={16} style={{ color: '#3B82F6' }} />
+                              </button>
+                            </div>
+                          </div>
+                        </div>
+
+                        {/* Expanded Details */}
+                        {expandedOrderId === order.id && (
+                          <div className="px-5 pb-5 border-t" style={{ backgroundColor: '#F8FAFC', borderColor: '#E2E8F0' }}>
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-6 pt-5">
+                              {/* Customer Details */}
+                              <div>
+                                <h4 className="font-semibold text-sm mb-3" style={{ color: '#1E293B' }}>Customer Details</h4>
+                                <div className="space-y-2">
+                                  <div className="flex items-center gap-2 text-sm">
+                                    <User size={14} style={{ color: '#64748B' }} />
+                                    <span style={{ color: '#64748B' }}>{order.buyer}</span>
+                                  </div>
+                                  <div className="flex items-center gap-2 text-sm">
+                                    <Phone size={14} style={{ color: '#64748B' }} />
+                                    <span style={{ color: '#64748B' }}>{order.buyerPhone}</span>
+                                  </div>
+                                  <div className="flex items-start gap-2 text-sm">
+                                    <MapPin size={14} className="mt-0.5" style={{ color: '#64748B' }} />
+                                    <span style={{ color: '#64748B' }}>{order.address}, {order.city}</span>
+                                  </div>
+                                </div>
+                              </div>
+
+                              {/* Order Items */}
+                              <div>
+                                <h4 className="font-semibold text-sm mb-3" style={{ color: '#1E293B' }}>Order Items</h4>
+                                <div className="space-y-2">
+                                  {order.items.map((item, idx) => (
+                                    <div key={idx} className="flex items-center justify-between text-sm">
+                                      <span style={{ color: '#64748B' }}>{item.product} × {item.qty}</span>
+                                      <span className="font-semibold" style={{ color: '#0D2E5E' }}>Rs. {(item.price * item.qty).toLocaleString()}</span>
+                                    </div>
+                                  ))}
+                                  <div className="border-t pt-2 flex items-center justify-between font-bold" style={{ borderColor: '#E2E8F0' }}>
+                                    <span style={{ color: '#1E293B' }}>Total</span>
+                                    <span style={{ color: '#ef4136' }}>Rs. {order.total.toLocaleString()}</span>
+                                  </div>
+                                </div>
+                              </div>
+                            </div>
+                          </div>
+                        )}
+                      </div>
+                    )) : (
+                      <div className="p-12 text-center">
+                        <Package size={48} className="mx-auto mb-4" style={{ color: '#CBD5E1' }} />
+                        <p className="font-semibold text-lg mb-2" style={{ color: '#64748B' }}>No orders found</p>
+                        <p className="text-sm" style={{ color: '#94A3B8' }}>Try adjusting your filters or search query</p>
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Pagination */}
+                  {totalPages > 1 && (
+                    <div className="p-4 border-t flex items-center justify-between" style={{ borderColor: '#E2E8F0' }}>
+                      <div className="text-sm" style={{ color: '#64748B' }}>
+                        Showing {((ordersPage - 1) * ordersPerPage) + 1} to {Math.min(ordersPage * ordersPerPage, filteredOrders.length)} of {filteredOrders.length} orders
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <button
+                          onClick={() => setOrdersPage(Math.max(1, ordersPage - 1))}
+                          disabled={ordersPage === 1}
+                          className="px-3 py-2 rounded-lg border text-sm font-semibold disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-50 transition-colors"
+                          style={{ borderColor: '#E2E8F0', color: '#64748B' }}
+                        >
+                          Previous
+                        </button>
+                        <div className="flex items-center gap-1">
+                          {Array.from({ length: Math.min(5, totalPages) }, (_, i) => {
+                            let pageNum;
+                            if (totalPages <= 5) {
+                              pageNum = i + 1;
+                            } else if (ordersPage <= 3) {
+                              pageNum = i + 1;
+                            } else if (ordersPage >= totalPages - 2) {
+                              pageNum = totalPages - 4 + i;
+                            } else {
+                              pageNum = ordersPage - 2 + i;
+                            }
+                            return (
+                              <button
+                                key={i}
+                                onClick={() => setOrdersPage(pageNum)}
+                                className="w-10 h-10 rounded-lg text-sm font-semibold transition-colors"
+                                style={{
+                                  backgroundColor: ordersPage === pageNum ? '#ef4136' : 'transparent',
+                                  color: ordersPage === pageNum ? 'white' : '#64748B'
+                                }}
+                              >
+                                {pageNum}
+                              </button>
+                            );
+                          })}
+                        </div>
+                        <button
+                          onClick={() => setOrdersPage(Math.min(totalPages, ordersPage + 1))}
+                          disabled={ordersPage === totalPages}
+                          className="px-3 py-2 rounded-lg border text-sm font-semibold disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-50 transition-colors"
+                          style={{ borderColor: '#E2E8F0', color: '#64748B' }}
+                        >
+                          Next
+                        </button>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              </div>
+            );
+          })()}
+
+          {/* ─── STOCK STATUS ─── */}
+          {activeSection === 'stock-status' && (
+            <div className="space-y-5">
+              {/* Info Banner */}
+              <div className="flex items-start gap-3 p-4 rounded-2xl" style={{ backgroundColor: '#DBEAFE', border: '1px solid #93C5FD' }}>
+                <AlertTriangle size={20} style={{ color: '#1E40AF', flexShrink: 0, marginTop: 1 }} />
+                <div>
+                  <p className="font-bold text-sm mb-1" style={{ color: '#1E3A8A' }}>Quick Stock Status Update</p>
+                  <p className="text-sm" style={{ color: '#1E40AF' }}>
+                    Quickly mark products as in stock or out of stock. This updates product availability immediately on the marketplace.
+                  </p>
+                </div>
+              </div>
+
+              {/* Search & Bulk Actions */}
+              <div className="bg-white rounded-2xl shadow-sm border p-4" style={{ borderColor: '#E2E8F0' }}>
+                <div className="flex flex-wrap gap-3 items-center mb-4">
+                  <div className="relative flex-1 min-w-64">
+                    <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2" style={{ color: '#94A3B8' }} />
+                    <input
+                      type="text"
+                      value={stockSearchQuery}
+                      onChange={(e) => setStockSearchQuery(e.target.value)}
+                      placeholder="Search products..."
+                      className="w-full pl-9 pr-4 py-2.5 rounded-xl border text-sm outline-none"
+                      style={{ borderColor: '#E2E8F0', backgroundColor: '#F8FAFC' }}
+                    />
+                  </div>
+                  {selectedProducts.length > 0 && (
+                    <div className="flex items-center gap-2">
+                      <span className="text-sm font-semibold" style={{ color: '#64748B' }}>
+                        {selectedProducts.length} selected
+                      </span>
+                      <button
+                        onClick={() => {
+                          alert(`Marked ${selectedProducts.length} products as IN STOCK`);
+                          setSelectedProducts([]);
+                        }}
+                        className="px-4 py-2.5 rounded-xl text-white font-semibold text-sm flex items-center gap-2"
+                        style={{ backgroundColor: '#10B981' }}
+                      >
+                        <CheckCircle2 size={16} /> Mark In Stock
+                      </button>
+                      <button
+                        onClick={() => {
+                          alert(`Marked ${selectedProducts.length} products as OUT OF STOCK`);
+                          setSelectedProducts([]);
+                        }}
+                        className="px-4 py-2.5 rounded-xl text-white font-semibold text-sm flex items-center gap-2"
+                        style={{ backgroundColor: '#EF4444' }}
+                      >
+                        <XCircle size={16} /> Mark Out of Stock
+                      </button>
+                    </div>
+                  )}
+                </div>
+
+                {/* Products Grid */}
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                  {mockProducts
+                    .filter((p) => p.name.toLowerCase().includes(stockSearchQuery.toLowerCase()))
+                    .map((product) => (
+                      <div
+                        key={product.id}
+                        className="border rounded-xl p-4 hover:shadow-md transition-shadow"
+                        style={{ borderColor: '#E2E8F0' }}
+                      >
+                        <div className="flex items-start gap-3">
+                          <input
+                            type="checkbox"
+                            checked={selectedProducts.includes(product.id)}
+                            onChange={(e) => {
+                              if (e.target.checked) {
+                                setSelectedProducts([...selectedProducts, product.id]);
+                              } else {
+                                setSelectedProducts(selectedProducts.filter(id => id !== product.id));
+                              }
+                            }}
+                            className="mt-1"
+                          />
+                          <img src={product.img} alt={product.name} className="w-16 h-16 rounded-lg object-cover flex-shrink-0" />
+                          <div className="flex-1 min-w-0">
+                            <h4 className="font-semibold text-sm mb-1 truncate" style={{ color: '#1E293B' }}>{product.name}</h4>
+                            <p className="text-xs mb-2" style={{ color: '#94A3B8' }}>SKU: {product.sku}</p>
+                            <div className="flex items-center gap-2">
+                              <button
+                                onClick={() => alert(`${product.name} marked as IN STOCK`)}
+                                className={`flex-1 px-3 py-1.5 rounded-lg text-xs font-semibold transition-colors ${product.status === 'active' ? 'text-white' : 'border'
+                                  }`}
+                                style={{
+                                  backgroundColor: product.status === 'active' ? '#10B981' : 'transparent',
+                                  borderColor: product.status === 'active' ? 'transparent' : '#10B981',
+                                  color: product.status === 'active' ? 'white' : '#10B981'
+                                }}
+                              >
+                                <CheckCircle2 size={12} className="inline mr-1" />
+                                In Stock
+                              </button>
+                              <button
+                                onClick={() => alert(`${product.name} marked as OUT OF STOCK`)}
+                                className={`flex-1 px-3 py-1.5 rounded-lg text-xs font-semibold transition-colors ${product.status === 'out_of_stock' ? 'text-white' : 'border'
+                                  }`}
+                                style={{
+                                  backgroundColor: product.status === 'out_of_stock' ? '#EF4444' : 'transparent',
+                                  borderColor: product.status === 'out_of_stock' ? 'transparent' : '#EF4444',
+                                  color: product.status === 'out_of_stock' ? 'white' : '#EF4444'
+                                }}
+                              >
+                                <XCircle size={12} className="inline mr-1" />
+                                Out of Stock
+                              </button>
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* ─── RFQ MANAGEMENT ─── */}
+          {activeSection === 'rfq' && (() => {
+            // Filter RFQs
+            const filteredRFQs = mockRFQs.filter((rfq) => {
+              const matchesStatus = rfqStatusFilter === 'all' || rfq.status === rfqStatusFilter;
+              const matchesSearch = rfq.id.toLowerCase().includes(rfqSearchQuery.toLowerCase()) ||
+                rfq.buyer.toLowerCase().includes(rfqSearchQuery.toLowerCase()) ||
+                rfq.product.toLowerCase().includes(rfqSearchQuery.toLowerCase());
+              const matchesPriority = rfqPriorityFilter === 'all' || rfq.priority === rfqPriorityFilter;
+
+              let matchesDate = true;
+              if (rfqDateFilter !== 'all') {
+                const rfqDate = new Date(rfq.date);
+                const now = new Date();
+                if (rfqDateFilter === 'today') {
+                  matchesDate = rfqDate.toDateString() === now.toDateString();
+                } else if (rfqDateFilter === 'week') {
+                  const weekAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
+                  matchesDate = rfqDate >= weekAgo;
+                } else if (rfqDateFilter === 'month') {
+                  matchesDate = rfqDate.getMonth() === now.getMonth() && rfqDate.getFullYear() === now.getFullYear();
+                }
+              }
+
+              return matchesStatus && matchesSearch && matchesDate && matchesPriority;
+            });
+
+            const rfqCounts = {
+              all: mockRFQs.length,
+              pending: mockRFQs.filter(r => r.status === 'pending').length,
+              quoted: mockRFQs.filter(r => r.status === 'quoted').length,
+              accepted: mockRFQs.filter(r => r.status === 'accepted').length,
+              rejected: mockRFQs.filter(r => r.status === 'rejected').length,
+            };
+
+            // Pagination
+            const totalPages = Math.ceil(filteredRFQs.length / rfqPerPage);
+            const paginatedRFQs = filteredRFQs.slice(
+              (rfqPage - 1) * rfqPerPage,
+              rfqPage * rfqPerPage
+            );
+
+            const handleSendQuote = (rfqId: string) => {
+              if (!replyMessage.trim() && !quoteBasePrice) return;
+
+              alert(`Quote sent for ${rfqId}!\nMessage: ${replyMessage}\nBase Price: Rs. ${quoteBasePrice}\nTotal: Rs. ${quoteTotalPrice}`);
+
+              setReplyMessage('');
+              setQuoteBasePrice('');
+              setQuoteTotalPrice('');
+              setQuoteDescription('');
+              setSelectedRFQ(null);
+            };
+
+            const handleQuickQuote = (rfqId: string) => {
+              setSelectedRFQ(rfqId);
+            };
+
+            const selectedRFQData = mockRFQs.find(r => r.id === selectedRFQ);
+
+            return (
+              <div className="space-y-5">
+                {/* Stats */}
+                <div className="grid grid-cols-2 lg:grid-cols-5 gap-4">
+                  {[
+                    { label: 'Total RFQs', value: rfqCounts.all, color: '#3e3e3e', icon: FileText },
+                    { label: 'Pending', value: rfqCounts.pending, color: '#F59E0B', icon: Clock },
+                    { label: 'Quoted', value: rfqCounts.quoted, color: '#3B82F6', icon: MessageSquare },
+                    { label: 'Accepted', value: rfqCounts.accepted, color: '#10B981', icon: CheckCircle2 },
+                    { label: 'Rejected', value: rfqCounts.rejected, color: '#EF4444', icon: XCircle },
+                  ].map((s) => {
+                    const Icon = s.icon;
+                    return (
+                      <div key={s.label} className="bg-white rounded-2xl p-4 shadow-sm border flex items-center gap-3" style={{ borderColor: '#E2E8F0' }}>
+                        <div className="w-10 h-10 rounded-xl flex items-center justify-center" style={{ backgroundColor: `${s.color}15` }}>
+                          <Icon size={18} style={{ color: s.color }} />
+                        </div>
+                        <div>
+                          <div className="font-bold text-xl" style={{ color: '#0D2E5E' }}>{s.value}</div>
+                          <div className="text-xs" style={{ color: '#64748B' }}>{s.label}</div>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+
+                {/* RFQ Table */}
+                <div className="bg-white rounded-2xl shadow-sm border overflow-hidden" style={{ borderColor: '#E2E8F0' }}>
+                  {/* Status Tabs */}
+                  <div className="flex border-b overflow-x-auto" style={{ borderColor: '#E2E8F0' }}>
+                    {[
+                      { id: 'all', label: 'All RFQs', count: rfqCounts.all },
+                      { id: 'pending', label: 'Pending', count: rfqCounts.pending },
+                      { id: 'quoted', label: 'Quoted', count: rfqCounts.quoted },
+                      { id: 'accepted', label: 'Accepted', count: rfqCounts.accepted },
+                      { id: 'rejected', label: 'Rejected', count: rfqCounts.rejected },
+                    ].map((tab) => (
+                      <button
+                        key={tab.id}
+                        onClick={() => {
+                          setRfqStatusFilter(tab.id);
+                          setRfqPage(1);
+                        }}
+                        className="px-6 py-4 text-sm font-semibold whitespace-nowrap border-b-2 transition-colors"
+                        style={{
+                          borderColor: rfqStatusFilter === tab.id ? '#ef4136' : 'transparent',
+                          color: rfqStatusFilter === tab.id ? '#ef4136' : '#64748B'
+                        }}
+                      >
+                        {tab.label}
+                        <span className="ml-2 px-2 py-0.5 rounded-full text-xs" style={{
+                          backgroundColor: rfqStatusFilter === tab.id ? '#FEF3C7' : '#F1F5F9',
+                          color: rfqStatusFilter === tab.id ? '#92400E' : '#64748B'
+                        }}>
+                          {tab.count}
+                        </span>
+                      </button>
+                    ))}
+                  </div>
+
+                  {/* Filters & Search */}
+                  <div className="p-4 border-b flex flex-wrap gap-3 items-center" style={{ borderColor: '#E2E8F0' }}>
+                    <div className="relative flex-1 min-w-64">
+                      <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2" style={{ color: '#94A3B8' }} />
+                      <input
+                        type="text"
+                        value={rfqSearchQuery}
+                        onChange={(e) => {
+                          setRfqSearchQuery(e.target.value);
+                          setRfqPage(1);
+                        }}
+                        placeholder="Search by RFQ ID, Buyer, or Product..."
+                        className="w-full pl-9 pr-4 py-2.5 rounded-xl border text-sm outline-none"
+                        style={{ borderColor: '#E2E8F0', backgroundColor: '#F8FAFC' }}
+                      />
+                    </div>
+                    <select
+                      value={rfqDateFilter}
+                      onChange={(e) => {
+                        setRfqDateFilter(e.target.value);
+                        setRfqPage(1);
+                      }}
+                      className="px-4 py-2.5 rounded-xl border text-sm outline-none"
+                      style={{ borderColor: '#E2E8F0', backgroundColor: '#F8FAFC' }}
+                    >
+                      <option value="all">All Time</option>
+                      <option value="today">Today</option>
+                      <option value="week">Last 7 Days</option>
+                      <option value="month">This Month</option>
+                    </select>
+                    <select
+                      value={rfqPriorityFilter}
+                      onChange={(e) => {
+                        setRfqPriorityFilter(e.target.value);
+                        setRfqPage(1);
+                      }}
+                      className="px-4 py-2.5 rounded-xl border text-sm outline-none"
+                      style={{ borderColor: '#E2E8F0', backgroundColor: '#F8FAFC' }}
+                    >
+                      <option value="all">All Priority</option>
+                      <option value="high">High Priority</option>
+                      <option value="normal">Normal</option>
+                    </select>
+                    <button
+                      className="px-4 py-2.5 rounded-xl border text-sm font-semibold flex items-center gap-2 hover:bg-gray-50 transition-colors"
+                      style={{ borderColor: '#E2E8F0', color: '#0D2E5E' }}
+                    >
+                      <Download size={16} /> Export
+                    </button>
+                  </div>
+
+                  {/* RFQ List Table */}
+                  <div className="divide-y" style={{ borderColor: '#F1F5F9' }}>
+                    {paginatedRFQs.length > 0 ? paginatedRFQs.map((rfq) => {
+                      const statusConfig = {
+                        pending: { label: 'Pending Response', color: '#92400E', bg: '#FEF3C7' },
+                        quoted: { label: 'Quote Sent', color: '#1E40AF', bg: '#DBEAFE' },
+                        accepted: { label: 'Quote Accepted', color: '#166534', bg: '#DCFCE7' },
+                        rejected: { label: 'Rejected', color: '#991B1B', bg: '#FEE2E2' },
+                      };
+                      const s = statusConfig[rfq.status];
+
+                      return (
+                        <div key={rfq.id} className="p-5 hover:bg-gray-50 transition-colors">
+                          <div className="flex items-center justify-between gap-4">
+                            <div className="flex-1 grid grid-cols-1 md:grid-cols-5 gap-4">
+                              <div>
+                                <div className="text-xs mb-1" style={{ color: '#94A3B8' }}>RFQ ID</div>
+                                <div className="font-mono font-semibold text-sm flex items-center gap-2" style={{ color: '#0D2E5E' }}>
+                                  {rfq.id}
+                                  {rfq.priority === 'high' && (
+                                    <span className="px-1.5 py-0.5 rounded text-xs font-semibold" style={{ backgroundColor: '#FEE2E2', color: '#991B1B' }}>
+                                      High
+                                    </span>
+                                  )}
+                                </div>
+                                <div className="text-xs mt-0.5" style={{ color: '#94A3B8' }}>{rfq.date} {rfq.time}</div>
+                              </div>
+                              <div>
+                                <div className="text-xs mb-1" style={{ color: '#94A3B8' }}>Buyer</div>
+                                <div className="font-semibold text-sm" style={{ color: '#1E293B' }}>{rfq.buyer}</div>
+                                <div className="text-xs mt-0.5" style={{ color: '#94A3B8' }}>{rfq.buyerPhone}</div>
+                              </div>
+                              <div>
+                                <div className="text-xs mb-1" style={{ color: '#94A3B8' }}>Product Details</div>
+                                <div className="font-semibold text-sm" style={{ color: '#1E293B' }}>{rfq.product}</div>
+                                <div className="text-xs mt-0.5" style={{ color: '#94A3B8' }}>Qty: {rfq.quantity}</div>
+                              </div>
+                              <div>
+                                <div className="text-xs mb-1" style={{ color: '#94A3B8' }}>Delivery</div>
+                                <div className="text-sm" style={{ color: '#1E293B' }}>{rfq.deliveryLocation}</div>
+                                <div className="text-xs mt-0.5" style={{ color: '#94A3B8' }}>By: {rfq.expectedDelivery}</div>
+                              </div>
+                              <div>
+                                <div className="text-xs mb-1" style={{ color: '#94A3B8' }}>Status</div>
+                                <span className="inline-block px-2.5 py-1 rounded-full text-xs font-semibold" style={{ color: s.color, backgroundColor: s.bg }}>
+                                  {s.label}
+                                </span>
+                                <div className="text-xs mt-1 flex items-center gap-1" style={{ color: '#94A3B8' }}>
+                                  <MessageSquare size={11} /> {rfq.conversation.length} msg
+                                </div>
+                              </div>
+                            </div>
+
+                            {/* Actions */}
+                            <div className="flex items-center gap-2">
+                              <button
+                                onClick={() => handleQuickQuote(rfq.id)}
+                                className="px-3 py-2 rounded-lg font-semibold text-xs flex items-center gap-1.5 hover:opacity-90 transition-opacity"
+                                style={{
+                                  backgroundColor: rfq.status === 'pending' ? '#ef4136' : '#3B82F6',
+                                  color: 'white'
+                                }}
+                              >
+                                {rfq.status === 'pending' ? (
+                                  <><Send size={14} /> Send Quote</>
+                                ) : (
+                                  <><Eye size={14} /> View</>
+                                )}
+                              </button>
+                            </div>
+                          </div>
+                        </div>
+                      );
+                    }) : (
+                      <div className="p-12 text-center">
+                        <FileText size={48} className="mx-auto mb-4" style={{ color: '#CBD5E1' }} />
+                        <p className="font-semibold text-lg mb-2" style={{ color: '#64748B' }}>No RFQs found</p>
+                        <p className="text-sm" style={{ color: '#94A3B8' }}>Try adjusting your filters or search query</p>
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Pagination */}
+                  {totalPages > 1 && (
+                    <div className="p-4 border-t flex items-center justify-between" style={{ borderColor: '#E2E8F0' }}>
+                      <div className="text-sm" style={{ color: '#64748B' }}>
+                        Showing {((rfqPage - 1) * rfqPerPage) + 1} to {Math.min(rfqPage * rfqPerPage, filteredRFQs.length)} of {filteredRFQs.length} RFQs
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <button
+                          onClick={() => setRfqPage(Math.max(1, rfqPage - 1))}
+                          disabled={rfqPage === 1}
+                          className="px-3 py-2 rounded-lg border text-sm font-semibold disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-50 transition-colors"
+                          style={{ borderColor: '#E2E8F0', color: '#64748B' }}
+                        >
+                          Previous
+                        </button>
+                        <div className="flex items-center gap-1">
+                          {Array.from({ length: Math.min(5, totalPages) }, (_, i) => {
+                            let pageNum;
+                            if (totalPages <= 5) {
+                              pageNum = i + 1;
+                            } else if (rfqPage <= 3) {
+                              pageNum = i + 1;
+                            } else if (rfqPage >= totalPages - 2) {
+                              pageNum = totalPages - 4 + i;
+                            } else {
+                              pageNum = rfqPage - 2 + i;
+                            }
+                            return (
+                              <button
+                                key={i}
+                                onClick={() => setRfqPage(pageNum)}
+                                className="w-10 h-10 rounded-lg text-sm font-semibold transition-colors"
+                                style={{
+                                  backgroundColor: rfqPage === pageNum ? '#ef4136' : 'transparent',
+                                  color: rfqPage === pageNum ? 'white' : '#64748B'
+                                }}
+                              >
+                                {pageNum}
+                              </button>
+                            );
+                          })}
+                        </div>
+                        <button
+                          onClick={() => setRfqPage(Math.min(totalPages, rfqPage + 1))}
+                          disabled={rfqPage === totalPages}
+                          className="px-3 py-2 rounded-lg border text-sm font-semibold disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-50 transition-colors"
+                          style={{ borderColor: '#E2E8F0', color: '#64748B' }}
+                        >
+                          Next
+                        </button>
+                      </div>
+                    </div>
+                  )}
+                </div>
+
+                {/* RFQ Details Modal/Drawer */}
+                {selectedRFQData && (
+                  <div className="fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center p-4" onClick={() => setSelectedRFQ(null)}>
+                    <div className="bg-white rounded-2xl shadow-xl max-w-3xl w-full max-h-[90vh] overflow-auto" onClick={(e) => e.stopPropagation()}>
+                      <div className="bg-white rounded-2xl">
+                        {/* Header */}
+                        <div className="p-5 border-b" style={{ borderColor: '#E2E8F0' }}>
+                          <div className="flex items-start justify-between mb-3">
+                            <div>
+                              <h3 className="font-bold text-lg mb-1" style={{ color: '#1E293B' }}>{selectedRFQData.id}</h3>
+                              <p className="text-sm" style={{ color: '#64748B' }}>{selectedRFQData.product} • Qty: {selectedRFQData.quantity}</p>
+                            </div>
+                            <div>
+                              {(() => {
+                                const statusConfig: Record<string, { label: string; color: string; bg: string }> = {
+                                  pending: { label: 'Pending Response', color: '#92400E', bg: '#FEF3C7' },
+                                  quoted: { label: 'Quote Sent', color: '#1E40AF', bg: '#DBEAFE' },
+                                  accepted: { label: 'Quote Accepted', color: '#166534', bg: '#DCFCE7' },
+                                  rejected: { label: 'Rejected', color: '#991B1B', bg: '#FEE2E2' },
+                                };
+                                const s = statusConfig[selectedRFQData.status] || statusConfig.pending;
+                                return (
+                                  <span className="px-3 py-1 rounded-full text-xs font-semibold" style={{ color: s.color, backgroundColor: s.bg }}>
+                                    {s.label}
+                                  </span>
+                                );
+                              })()}
+                            </div>
+                          </div>
+
+                          {/* Buyer Info */}
+                          <div className="grid grid-cols-2 gap-4 p-4 rounded-xl" style={{ backgroundColor: '#F8FAFC' }}>
+                            <div>
+                              <div className="text-xs mb-1" style={{ color: '#94A3B8' }}>Buyer</div>
+                              <div className="font-semibold text-sm" style={{ color: '#1E293B' }}>{selectedRFQData.buyer}</div>
+                              <div className="text-xs mt-1 flex items-center gap-1" style={{ color: '#64748B' }}>
+                                <Mail size={11} /> {selectedRFQData.buyerEmail}
+                              </div>
+                              <div className="text-xs mt-0.5 flex items-center gap-1" style={{ color: '#64748B' }}>
+                                <Phone size={11} /> {selectedRFQData.buyerPhone}
+                              </div>
+                            </div>
+                            <div>
+                              <div className="text-xs mb-1" style={{ color: '#94A3B8' }}>Delivery Details</div>
+                              <div className="text-sm font-medium" style={{ color: '#1E293B' }}>{selectedRFQData.deliveryLocation}</div>
+                              <div className="text-xs mt-1" style={{ color: '#64748B' }}>
+                                Expected by: {selectedRFQData.expectedDelivery}
+                              </div>
+                            </div>
+                          </div>
+                        </div>
+
+                        {/* Conversation Thread */}
+                        <div className="p-5 max-h-96 overflow-y-auto space-y-4" style={{ backgroundColor: '#F8FAFC' }}>
+                          {selectedRFQData.conversation.map((msg) => (
+                            <div key={msg.id} className={`flex ${msg.sender === 'vendor' ? 'justify-end' : 'justify-start'}`}>
+                              <div className={`max-w-md ${msg.sender === 'vendor' ? 'ml-auto' : 'mr-auto'}`}>
+                                <div className="flex items-center gap-2 mb-1">
+                                  <span className="text-xs font-semibold" style={{ color: msg.sender === 'vendor' ? '#ef4136' : '#3e3e3e' }}>
+                                    {msg.sender === 'vendor' ? 'You (Vendor)' : selectedRFQData.buyer}
+                                  </span>
+                                  <span className="text-xs" style={{ color: '#94A3B8' }}>{msg.timestamp}</span>
+                                </div>
+                                <div
+                                  className="p-4 rounded-2xl"
+                                  style={{
+                                    backgroundColor: msg.sender === 'vendor' ? '#ef4136' : 'white',
+                                    color: msg.sender === 'vendor' ? 'white' : '#1E293B',
+                                    border: msg.sender === 'vendor' ? 'none' : '1px solid #E2E8F0'
+                                  }}
+                                >
+                                  <p className="text-sm whitespace-pre-line">{msg.text}</p>
+                                  {msg.basePrice && (
+                                    <div className="mt-3 pt-3" style={{ borderTop: msg.sender === 'vendor' ? '1px solid rgba(255,255,255,0.2)' : '1px solid #E2E8F0' }}>
+                                      <div className="text-xs mb-1" style={{ opacity: 0.9 }}>Base Price per unit</div>
+                                      <div className="font-bold text-lg">Rs. {msg.basePrice.toLocaleString()}</div>
+                                      {msg.totalPrice && (
+                                        <div className="text-xs mt-2">Total: Rs. {msg.totalPrice.toLocaleString()}</div>
+                                      )}
+                                    </div>
+                                  )}
+                                </div>
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+
+                        {/* Reply Form */}
+                        {selectedRFQData.status !== 'accepted' && selectedRFQData.status !== 'rejected' && (
+                          <div className="p-5 border-t" style={{ borderColor: '#E2E8F0' }}>
+                            <h4 className="font-semibold mb-3" style={{ color: '#1E293B' }}>
+                              {selectedRFQData.status === 'pending' ? 'Send Quotation' : 'Update Quotation'}
+                            </h4>
+
+                            {/* Pricing Inputs */}
+                            <div className="grid grid-cols-2 gap-3 mb-3">
+                              <div>
+                                <label className="block text-xs font-semibold mb-1.5" style={{ color: '#64748B' }}>Base Price (per unit)</label>
+                                <div className="relative">
+                                  <span className="absolute left-3 top-1/2 -translate-y-1/2 text-sm font-semibold" style={{ color: '#64748B' }}>Rs.</span>
+                                  <input
+                                    type="number"
+                                    value={quoteBasePrice}
+                                    onChange={(e) => setQuoteBasePrice(e.target.value)}
+                                    placeholder="Enter base price"
+                                    className="w-full pl-10 pr-3 py-2.5 rounded-xl border text-sm outline-none"
+                                    style={{ borderColor: '#E2E8F0' }}
+                                  />
+                                </div>
+                              </div>
+                              <div>
+                                <label className="block text-xs font-semibold mb-1.5" style={{ color: '#64748B' }}>Total Price</label>
+                                <div className="relative">
+                                  <span className="absolute left-3 top-1/2 -translate-y-1/2 text-sm font-semibold" style={{ color: '#64748B' }}>Rs.</span>
+                                  <input
+                                    type="number"
+                                    value={quoteTotalPrice}
+                                    onChange={(e) => setQuoteTotalPrice(e.target.value)}
+                                    placeholder="Total amount"
+                                    className="w-full pl-10 pr-3 py-2.5 rounded-xl border text-sm outline-none"
+                                    style={{ borderColor: '#E2E8F0' }}
+                                  />
+                                </div>
+                              </div>
+                            </div>
+
+                            {/* Message Input */}
+                            <div className="mb-3">
+                              <label className="block text-xs font-semibold mb-1.5" style={{ color: '#64748B' }}>Quote Details & Terms</label>
+                              <textarea
+                                value={replyMessage}
+                                onChange={(e) => setReplyMessage(e.target.value)}
+                                placeholder="Include delivery timeline, payment terms, warranty information, and any other relevant details..."
+                                rows={4}
+                                className="w-full px-4 py-3 rounded-xl border text-sm outline-none resize-none"
+                                style={{ borderColor: '#E2E8F0' }}
+                              />
+                            </div>
+
+                            {/* Send Button */}
+                            <button
+                              onClick={() => handleSendQuote(selectedRFQData.id)}
+                              className="w-full py-3 rounded-xl text-white font-semibold flex items-center justify-center gap-2 hover:opacity-90 transition-opacity"
+                              style={{ backgroundColor: '#ef4136' }}
+                            >
+                              <Send size={18} />
+                              {selectedRFQData.status === 'pending' ? 'Send Quotation' : 'Update Quotation'}
+                            </button>
+                          </div>
+                        )}
+
+                        {selectedRFQData.status === 'accepted' && (
+                          <div className="p-5 border-t flex items-center gap-3" style={{ borderColor: '#E2E8F0', backgroundColor: '#F0FDF4' }}>
+                            <CheckCircle2 size={20} style={{ color: '#16A34A' }} />
+                            <div>
+                              <p className="font-semibold text-sm" style={{ color: '#166534' }}>Quote Accepted!</p>
+                              <p className="text-xs" style={{ color: '#15803D' }}>The buyer has accepted your quotation. Proceed to create an order.</p>
+                            </div>
+                            <button
+                              className="ml-auto px-4 py-2 rounded-xl text-white font-semibold text-sm"
+                              style={{ backgroundColor: '#16A34A' }}
+                            >
+                              Create Order
+                            </button>
+                          </div>
+                        )}
+
+                        {selectedRFQData.status === 'rejected' && (
+                          <div className="p-5 border-t flex items-center gap-3" style={{ borderColor: '#E2E8F0', backgroundColor: '#FEF2F2' }}>
+                            <XCircle size={20} style={{ color: '#DC2626' }} />
+                            <div className="flex-1">
+                              <p className="font-semibold text-sm" style={{ color: '#991B1B' }}>Quote Rejected</p>
+                              <p className="text-xs" style={{ color: '#B91C1C' }}>The buyer has declined your quotation and chose another vendor.</p>
+                            </div>
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                )}
+              </div>
+            );
+          })()}
+
+          {/* ─── SETTINGS & ONBOARDING ─── */}
+          {activeSection === 'settings' && (
+            <div className="max-w-3xl mx-auto space-y-6">
+              {/* Progress Stepper */}
+              <div className="bg-white rounded-2xl shadow-sm border p-6 mb-6" style={{ borderColor: '#E2E8F0' }}>
+                <div className="flex items-center gap-2">
+                  {[
+                    { key: 'store', label: 'Store Setup' },
+                    { key: 'documents', label: 'Documents' },
+                    { key: 'subscription', label: 'Subscription' },
+                    { key: 'payment', label: 'Payment' },
+                  ].map((s, idx) => (
+                    <div key={s.key} className="flex items-center gap-2 flex-1">
+                      <div className="flex flex-col items-center gap-2 flex-1">
+                        <div
+                          className="w-10 h-10 rounded-full flex items-center justify-center text-sm font-bold transition-all"
+                          style={{
+                            backgroundColor: idx <= onboardingStepIdx ? '#0D2E5E' : '#F1F5F9',
+                            color: idx <= onboardingStepIdx ? 'white' : '#94A3B8',
+                            border: idx <= onboardingStepIdx ? 'none' : '2px solid #E2E8F0'
+                          }}
+                        >
+                          {idx < onboardingStepIdx ? <CheckCircle2 size={20} /> : idx + 1}
+                        </div>
+                        <span className="text-xs font-semibold text-center" style={{ color: idx <= onboardingStepIdx ? '#0D2E5E' : '#94A3B8' }}>{s.label}</span>
+                      </div>
+                      {idx < 3 && (
+                        <div className="h-1 flex-1 mx-2 rounded-full" style={{ backgroundColor: idx < onboardingStepIdx ? '#0D2E5E' : '#F1F5F9' }} />
+                      )}
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              {/* ─── STEP 1: Store Setup ─── */}
+              {onboardingStep === 'store' && (
+                <div className="bg-white rounded-2xl shadow-sm border p-8" style={{ borderColor: '#E2E8F0' }}>
+                  <div className="flex items-center gap-3 mb-6">
+                    <div className="w-10 h-10 rounded-xl flex items-center justify-center" style={{ backgroundColor: '#EFF6FF' }}>
+                      <Store size={20} style={{ color: '#0D2E5E' }} />
+                    </div>
+                    <div>
+                      <h2 className="font-bold text-xl" style={{ color: '#0D2E5E' }}>Store Setup</h2>
+                      <p className="text-sm" style={{ color: '#64748B' }}>Tell us about your business</p>
+                    </div>
+                  </div>
+
+                  <div className="space-y-5">
+                    {/* Shop Name */}
+                    <div>
+                      <label className="block text-sm font-semibold mb-1.5" style={{ color: '#334155' }}>Shop Name *</label>
+                      <input
+                        type="text"
+                        value={storeForm.shopName}
+                        onChange={(e) => setStoreForm({ ...storeForm, shopName: e.target.value })}
+                        placeholder="e.g. Ahmed Building Materials"
+                        className="w-full px-4 py-3 rounded-xl border text-sm outline-none"
+                        style={{ borderColor: '#E2E8F0', backgroundColor: '#F8FAFC' }}
+                      />
+                    </div>
+
+                    {/* Logo Upload */}
+                    <div>
+                      <label className="block text-sm font-semibold mb-1.5" style={{ color: '#334155' }}>Shop Logo</label>
+                      <input
+                        type="file"
+                        id="logo-upload"
+                        className="hidden"
+                        accept="image/*"
+                        onChange={(e) => {
+                          const file = e.target.files?.[0];
+                          if (file) setStoreForm({ ...storeForm, logo: file });
+                        }}
+                      />
+                      <div
+                        onClick={() => document.getElementById('logo-upload')?.click()}
+                        className="border-2 border-dashed rounded-xl p-6 text-center cursor-pointer hover:bg-gray-50 transition-colors"
+                        style={{ borderColor: storeForm.logo ? '#10B981' : '#CBD5E1', backgroundColor: storeForm.logo ? '#F0FDF4' : 'transparent' }}
+                      >
+                        {storeForm.logo ? (
+                          <div className="flex flex-col items-center">
+                            <CheckCircle2 size={28} className="mb-2" style={{ color: '#10B981' }} />
+                            <p className="text-sm font-medium" style={{ color: '#166534' }}>{storeForm.logo.name}</p>
+                          </div>
+                        ) : (
+                          <>
+                            <Camera size={28} className="mx-auto mb-2" style={{ color: '#94A3B8' }} />
+                            <p className="text-sm font-medium" style={{ color: '#64748B' }}>Click to upload logo</p>
+                            <p className="text-xs mt-1" style={{ color: '#94A3B8' }}>PNG, JPG up to 5MB. Recommended: 200×200px</p>
+                          </>
+                        )}
+                      </div>
+                    </div>
+
+                    {/* Shop Cover Upload */}
+                    <div>
+                      <label className="block text-sm font-semibold mb-1.5" style={{ color: '#334155' }}>Shop Cover Image</label>
+                      <input
+                        type="file"
+                        id="cover-upload"
+                        className="hidden"
+                        accept="image/*"
+                        onChange={(e) => {
+                          const file = e.target.files?.[0];
+                          if (file) setStoreForm({ ...storeForm, shopCoverImage: file });
+                        }}
+                      />
+                      <div
+                        onClick={() => document.getElementById('cover-upload')?.click()}
+                        className="border-2 border-dashed rounded-xl p-6 text-center cursor-pointer hover:bg-gray-50 transition-colors"
+                        style={{ borderColor: storeForm.shopCoverImage ? '#10B981' : '#CBD5E1', backgroundColor: storeForm.shopCoverImage ? '#F0FDF4' : 'transparent' }}
+                      >
+                        {storeForm.shopCoverImage ? (
+                          <div className="flex flex-col items-center">
+                            <CheckCircle2 size={28} className="mb-2" style={{ color: '#10B981' }} />
+                            <p className="text-sm font-medium" style={{ color: '#166534' }}>{storeForm.shopCoverImage.name}</p>
+                          </div>
+                        ) : (
+                          <>
+                            <Camera size={28} className="mx-auto mb-2" style={{ color: '#94A3B8' }} />
+                            <p className="text-sm font-medium" style={{ color: '#64748B' }}>Click to upload cover image</p>
+                            <p className="text-xs mt-1" style={{ color: '#94A3B8' }}>PNG, JPG up to 5MB. Recommended: 1200×400px</p>
+                          </>
+                        )}
+                      </div>
+                    </div>
+
+                    {/* Account Type */}
+                    <div>
+                      <label className="block text-sm font-semibold mb-2" style={{ color: '#334155' }}>Account Type *</label>
+                      <div className="grid grid-cols-2 gap-3">
+                        {[
+                          { id: 'retailer', label: 'Retailer', icon: User, desc: 'Sells directly to consumers' },
+                          { id: 'wholesaler', label: 'Wholesaler', icon: Building2, desc: 'Sells in bulk' },
+                        ].map((type) => {
+                          const Icon = type.icon;
+                          return (
+                            <button
+                              key={type.id}
+                              onClick={() => setAccountType(type.id as 'retailer' | 'wholesaler')}
+                              className="p-4 rounded-xl border-2 text-left transition-all"
+                              style={{
+                                borderColor: accountType === type.id ? '#0D2E5E' : '#E2E8F0',
+                                backgroundColor: accountType === type.id ? '#EFF6FF' : '#F8FAFC',
+                              }}
+                            >
+                              <Icon size={20} className="mb-2" style={{ color: accountType === type.id ? '#0D2E5E' : '#94A3B8' }} />
+                              <div className="font-semibold text-sm" style={{ color: '#1E293B' }}>{type.label}</div>
+                              <div className="text-xs" style={{ color: '#64748B' }}>{type.desc}</div>
+                            </button>
+                          );
+                        })}
+                      </div>
+                    </div>
+
+                    {/* CNIC / NTN */}
+                    <div>
+                      {accountType === 'retailer' ? (
+                        <div>
+                          <label className="block text-sm font-semibold mb-1.5" style={{ color: '#334155' }}>CNIC Number *</label>
+                          <input
+                            type="text"
+                            value={storeForm.cnic}
+                            onChange={(e) => setStoreForm({ ...storeForm, cnic: e.target.value })}
+                            placeholder="XXXXX-XXXXXXX-X"
+                            className="w-full px-4 py-3 rounded-xl border text-sm outline-none"
+                            style={{ borderColor: '#E2E8F0', backgroundColor: '#F8FAFC' }}
+                          />
+                        </div>
+                      ) : (
+                        <div>
+                          <label className="block text-sm font-semibold mb-1.5" style={{ color: '#334155' }}>NTN Number *</label>
+                          <input
+                            type="text"
+                            value={storeForm.ntn}
+                            onChange={(e) => setStoreForm({ ...storeForm, ntn: e.target.value })}
+                            placeholder="Enter NTN number"
+                            className="w-full px-4 py-3 rounded-xl border text-sm outline-none"
+                            style={{ borderColor: '#E2E8F0', backgroundColor: '#F8FAFC' }}
+                          />
+                        </div>
+                      )}
+                    </div>
+
+                    {/* Locations */}
+                    {[
+                      { key: 'address', label: 'Business Address *', placeholder: 'Street, City, Province' },
+                      { key: 'businessLocation', label: 'Business Location (Google Maps Link)', placeholder: 'https://maps.google.com/...' },
+                      { key: 'warehouseLocation', label: 'Warehouse Location', placeholder: 'Street, City, Province' },
+                      { key: 'returnLocation', label: 'Return Address', placeholder: 'Address for returns & refunds' },
+                    ].map((field) => (
+                      <div key={field.key}>
+                        <label className="block text-sm font-semibold mb-1.5" style={{ color: '#334155' }}>{field.label}</label>
+                        <div className="relative">
+                          <MapPin size={16} className="absolute left-3 top-1/2 -translate-y-1/2" style={{ color: '#94A3B8' }} />
+                          <input
+                            type="text"
+                            placeholder={field.placeholder}
+                            className="w-full pl-9 pr-4 py-3 rounded-xl border text-sm outline-none"
+                            style={{ borderColor: '#E2E8F0', backgroundColor: '#F8FAFC' }}
+                          />
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+
+                  <div className="flex items-center justify-end gap-3 mt-8 pt-6 border-t" style={{ borderColor: '#F1F5F9' }}>
+                    <button onClick={handleOnboardingNext} className="px-8 py-3 rounded-xl text-white font-semibold flex items-center gap-2 hover:opacity-90 transition-opacity" style={{ backgroundColor: '#0D2E5E' }}>
+                      Save & Continue <ChevronRight size={18} />
+                    </button>
+                  </div>
+                </div>
+              )}
+
+              {/* ─── STEP 2: Documents ─── */}
+              {onboardingStep === 'documents' && (
+                <div className="bg-white rounded-2xl shadow-sm border p-8" style={{ borderColor: '#E2E8F0' }}>
+                  <div className="flex items-center gap-3 mb-6">
+                    <div className="w-10 h-10 rounded-xl flex items-center justify-center" style={{ backgroundColor: '#EFF6FF' }}>
+                      <FileText size={20} style={{ color: '#0D2E5E' }} />
+                    </div>
+                    <div>
+                      <h2 className="font-bold text-xl" style={{ color: '#0D2E5E' }}>Bank Details</h2>
+                      <p className="text-sm" style={{ color: '#64748B' }}>Enter your bank account details for receiving payments</p>
+                    </div>
+                  </div>
+
+                  <div className="space-y-5">
+                    <div>
+                      <label className="block text-sm font-semibold mb-1.5" style={{ color: '#334155' }}>Account Title *</label>
+                      <input
+                        type="text"
+                        value={bankForm.accountTitle}
+                        onChange={(e) => setBankForm({ ...bankForm, accountTitle: e.target.value })}
+                        placeholder="e.g. Muhammad Ahmed"
+                        className="w-full px-4 py-3 rounded-xl border text-sm outline-none"
+                        style={{ borderColor: '#E2E8F0', backgroundColor: '#F8FAFC' }}
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-sm font-semibold mb-1.5" style={{ color: '#334155' }}>Bank Account Number *</label>
+                      <input
+                        type="text"
+                        value={bankForm.accountNumber}
+                        onChange={(e) => setBankForm({ ...bankForm, accountNumber: e.target.value })}
+                        placeholder="e.g. 1234567890"
+                        className="w-full px-4 py-3 rounded-xl border text-sm outline-none"
+                        style={{ borderColor: '#E2E8F0', backgroundColor: '#F8FAFC' }}
+                      />
+                    </div>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      <div>
+                        <label className="block text-sm font-semibold mb-1.5" style={{ color: '#334155' }}>Branch Code *</label>
+                        <input
+                          type="text"
+                          value={bankForm.branchCode}
+                          onChange={(e) => setBankForm({ ...bankForm, branchCode: e.target.value })}
+                          placeholder="e.g. 0214"
+                          className="w-full px-4 py-3 rounded-xl border text-sm outline-none"
+                          style={{ borderColor: '#E2E8F0', backgroundColor: '#F8FAFC' }}
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-sm font-semibold mb-1.5" style={{ color: '#334155' }}>IBAN Number *</label>
+                        <input
+                          type="text"
+                          value={bankForm.ibanNumber}
+                          onChange={(e) => setBankForm({ ...bankForm, ibanNumber: e.target.value })}
+                          placeholder="e.g. PK00 ABCD 1234 5678 9012"
+                          className="w-full px-4 py-3 rounded-xl border text-sm outline-none"
+                          style={{ borderColor: '#E2E8F0', backgroundColor: '#F8FAFC' }}
+                        />
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="flex items-center gap-3 mt-8 pt-6 border-t" style={{ borderColor: '#F1F5F9' }}>
+                    <button onClick={handleOnboardingBack} className="px-6 py-3 rounded-xl font-semibold flex items-center gap-2 border hover:bg-gray-50 transition-colors" style={{ borderColor: '#E2E8F0', color: '#64748B' }}>
+                      <ChevronLeft size={18} /> Back
+                    </button>
+                    <button onClick={handleOnboardingNext} className="flex-1 py-3 rounded-xl text-white font-semibold flex items-center justify-center gap-2 hover:opacity-90 transition-opacity" style={{ backgroundColor: '#0D2E5E' }}>
+                      Submit Documents <ChevronRight size={18} />
+                    </button>
+                  </div>
+                </div>
+              )}
+
+              {/* ─── STEP 3: Subscription ─── */}
+              {onboardingStep === 'subscription' && (
+                <div className="bg-white rounded-2xl shadow-sm border p-8" style={{ borderColor: '#E2E8F0' }}>
+                  <div className="text-center mb-8">
+                    <h2 className="font-bold text-2xl" style={{ color: '#0D2E5E' }}>Choose Your Subscription Plan</h2>
+                    <p className="text-sm mt-2" style={{ color: '#64748B' }}>
+                      Select a plan that best fits your business size and needs
+                    </p>
+                  </div>
+
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
+                    {subscriptionPlans.map((plan) => (
+                      <button
+                        key={plan.id}
+                        onClick={() => setSelectedPlan(plan.id)}
+                        className="rounded-2xl border-2 p-6 text-left transition-all hover:shadow-lg"
+                        style={{
+                          borderColor: selectedPlan === plan.id ? plan.color : '#E2E8F0',
+                          backgroundColor: selectedPlan === plan.id ? plan.bg : 'white',
+                        }}
+                      >
+                        {/* Badge */}
+                        <div className="flex items-center justify-between mb-4">
+                          <span className="px-3 py-1 rounded-full text-xs font-semibold text-white" style={{ backgroundColor: plan.badgeColor }}>
+                            {plan.badge}
+                          </span>
+                          <div className="w-6 h-6 rounded-full border-2 flex items-center justify-center" style={{
+                            borderColor: selectedPlan === plan.id ? plan.color : '#CBD5E1',
+                            backgroundColor: selectedPlan === plan.id ? plan.color : 'transparent',
+                          }}>
+                            {selectedPlan === plan.id && <CheckCircle2 size={14} className="text-white" />}
+                          </div>
+                        </div>
+
+                        <h3 className="font-bold text-xl mb-1" style={{ color: plan.color }}>{plan.name}</h3>
+                        <p className="text-sm mb-4" style={{ color: '#64748B' }}>{plan.description}</p>
+
+                        <div className="flex items-baseline gap-1 mb-5">
+                          <span className="text-xs font-semibold" style={{ color: '#64748B' }}>Rs.</span>
+                          <span className="font-bold" style={{ fontSize: '28px', color: '#0D2E5E' }}>{plan.price}</span>
+                          <span className="text-sm" style={{ color: '#64748B' }}>{plan.period}</span>
+                        </div>
+
+                        <ul className="space-y-2">
+                          {plan.features.map((feat) => (
+                            <li key={feat} className="flex items-center gap-2 text-sm" style={{ color: '#374151' }}>
+                              <CheckCircle2 size={14} style={{ color: plan.color, flexShrink: 0 }} />
+                              {feat}
+                            </li>
+                          ))}
+                        </ul>
+                      </button>
+                    ))}
+                  </div>
+
+                  <div className="flex items-center gap-3">
+                    <button onClick={handleOnboardingBack} className="px-6 py-3 rounded-xl font-semibold flex items-center gap-2 border hover:bg-gray-50 transition-colors" style={{ borderColor: '#E2E8F0', color: '#64748B' }}>
+                      <ChevronLeft size={18} /> Back
+                    </button>
+                    <button
+                      onClick={handleOnboardingNext}
+                      disabled={!selectedPlan}
+                      className="flex-1 py-3 rounded-xl text-white font-semibold flex items-center justify-center gap-2 hover:opacity-90 transition-opacity"
+                      style={{ backgroundColor: selectedPlan ? '#0D2E5E' : '#94A3B8' }}
+                    >
+                      Proceed to Payment <CreditCard size={18} />
+                    </button>
+                  </div>
+                </div>
+              )}
+
+              {/* ─── STEP 4: Payment ─── */}
+              {onboardingStep === 'payment' && (
+                <div className="bg-white rounded-2xl shadow-sm border p-8" style={{ borderColor: '#E2E8F0' }}>
+                  <div className="flex items-center gap-3 mb-6">
+                    <div className="w-10 h-10 rounded-xl flex items-center justify-center" style={{ backgroundColor: '#F0FDF4' }}>
+                      <CreditCard size={20} style={{ color: '#10B981' }} />
+                    </div>
+                    <div>
+                      <h2 className="font-bold text-xl" style={{ color: '#0D2E5E' }}>Advance Payment</h2>
+                      <p className="text-sm" style={{ color: '#64748B' }}>Complete your subscription activation</p>
+                    </div>
+                  </div>
+
+                  <div className="p-4 rounded-xl mb-6" style={{ backgroundColor: '#F0FDF4', border: '1px solid #BBF7D0' }}>
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <p className="text-sm font-semibold" style={{ color: '#166534' }}>
+                          {selectedPlan === 'manufacturer' ? 'Manufacturer Plan' : 'Shopkeeper Plan'}
+                        </p>
+                        <p className="text-xs" style={{ color: '#16A34A' }}>Annual Subscription</p>
+                      </div>
+                      <p className="font-bold text-xl" style={{ color: '#0D2E5E' }}>
+                        Rs. {selectedPlan === 'manufacturer' ? '270,000' : '50,000'}
+                      </p>
+                    </div>
+                  </div>
+
+                  <div className="space-y-4">
+                    <div>
+                      <label className="block text-sm font-semibold mb-1.5" style={{ color: '#334155' }}>Card Number</label>
+                      <input type="text" placeholder="1234 5678 9012 3456" className="w-full px-4 py-3 rounded-xl border text-sm outline-none" style={{ borderColor: '#E2E8F0', backgroundColor: '#F8FAFC' }} />
+                    </div>
+                    <div className="grid grid-cols-2 gap-4">
+                      <div>
+                        <label className="block text-sm font-semibold mb-1.5" style={{ color: '#334155' }}>Expiry Date</label>
+                        <input type="text" placeholder="MM / YY" className="w-full px-4 py-3 rounded-xl border text-sm outline-none" style={{ borderColor: '#E2E8F0', backgroundColor: '#F8FAFC' }} />
+                      </div>
+                      <div>
+                        <label className="block text-sm font-semibold mb-1.5" style={{ color: '#334155' }}>CVV</label>
+                        <input type="text" placeholder="•••" className="w-full px-4 py-3 rounded-xl border text-sm outline-none" style={{ borderColor: '#E2E8F0', backgroundColor: '#F8FAFC' }} />
+                      </div>
+                    </div>
+                    <div>
+                      <label className="block text-sm font-semibold mb-1.5" style={{ color: '#334155' }}>Name on Card</label>
+                      <input type="text" placeholder="Muhammad Ahmed" className="w-full px-4 py-3 rounded-xl border text-sm outline-none" style={{ borderColor: '#E2E8F0', backgroundColor: '#F8FAFC' }} />
+                    </div>
+                  </div>
+
+                  <div className="flex items-center gap-3 mt-4 p-3 rounded-xl" style={{ backgroundColor: '#FFF7ED' }}>
+                    <Shield size={18} style={{ color: '#F97316' }} />
+                    <p className="text-xs" style={{ color: '#9A3412' }}>Your payment is secured with 256-bit SSL encryption</p>
+                  </div>
+
+                  <div className="flex items-center gap-3 mt-6 pt-6 border-t" style={{ borderColor: '#F1F5F9' }}>
+                    <button onClick={handleOnboardingBack} className="px-6 py-3 rounded-xl font-semibold flex items-center gap-2 border hover:bg-gray-50 transition-colors" style={{ borderColor: '#E2E8F0', color: '#64748B' }}>
+                      <ChevronLeft size={18} /> Back
+                    </button>
+                    <button
+                      onClick={() => navigate2('products')}
+                      className="flex-1 py-3 rounded-xl text-white font-semibold flex items-center justify-center gap-2 hover:opacity-90 transition-opacity"
+                      style={{ backgroundColor: '#F97316' }}
+                    >
+                      <Zap size={18} /> Activate Subscription & Finish Setup
+                    </button>
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
+        </main>
+      </div>
+    </div>
+  );
+}
